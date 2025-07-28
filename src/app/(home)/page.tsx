@@ -1,11 +1,28 @@
-import React from 'react'
+"use client"
+
+import React, { useState } from 'react'
 import { FaCamera, FaLink, FaBars, FaBolt } from 'react-icons/fa'
 import { IoFilterOutline } from 'react-icons/io5'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { UploadDialog } from '@/app/_components/upload-dialog'
 
 const HomePage = () => {
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [imageName, setImageName] = useState<string>('')
+
+  const handleImageConfirm = (file: File) => {
+    setSelectedImage(file)
+    setImageName(file.name)
+    console.log('Image confirmed:', file.name)
+  }
+
+  const removeImage = () => {
+    setSelectedImage(null)
+    setImageName('')
+  }
   return (
     <div className="min-h-screen bg-white flex justify-center px-4 py-16">
       <Card className="w-full max-w-2xl border-0 shadow-none">
@@ -32,17 +49,35 @@ const HomePage = () => {
 
           {/* Input Section */}
           <div className="space-y-4">
-            <div className='flex items-center gap-4'>
+            {/* Image Name Display */}
+            {imageName && (
+              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <span className="text-blue-600">📎</span>
+                <span className="text-sm text-blue-800 font-medium flex-1 truncate">
+                  {imageName}
+                </span>
+                <button
+                  onClick={removeImage}
+                  className="text-red-500 hover:text-red-700 transition-colors p-1 rounded-full hover:bg-red-50"
+                  title="Remove image"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
+            <div className='flex items-center gap-4'>
               <div className="relative flex-1">
                 <Input
                   type="url"
-                  placeholder="Enter portfolio URL..."
-
+                  placeholder={imageName ? "Image attached - Enter portfolio URL..." : "Enter portfolio URL..."}
                   className="w-full h-12 pl-4 pr-12 text-lg border-gray-200 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
-                  <FaLink className="w-4 h-4 text-gray-400" />
+                  <FaLink
+                    className="w-4 h-4 text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
+                    onClick={() => setUploadDialogOpen(true)}
+                  />
                 </div>
               </div>
               <IoFilterOutline className="w-8 h-8 text-gray-400 cursor-pointer hover:text-gray-600" />
@@ -60,6 +95,13 @@ const HomePage = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Upload Dialog */}
+      <UploadDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        onImageConfirm={handleImageConfirm}
+      />
     </div>
   )
 }
