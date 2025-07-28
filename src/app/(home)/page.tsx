@@ -7,11 +7,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { UploadDialog } from '@/app/_components/upload-dialog'
+import { ManualFormDialog } from '../_components/manual-form-dialog'
 
 const HomePage = () => {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
+  const [manualFormDialogOpen, setManualFormDialogOpen] = useState(false)
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imageName, setImageName] = useState<string>('')
+  const [projectDetails, setProjectDetails] = useState<{ title: string; description: string } | null>(null)
 
   const handleImageConfirm = (file: File) => {
     setSelectedImage(file)
@@ -23,6 +26,16 @@ const HomePage = () => {
     setSelectedImage(null)
     setImageName('')
   }
+
+  const handleManualFormSubmit = (data: { title: string; description: string }) => {
+    setProjectDetails(data)
+    console.log('Manual form submitted:', data)
+  }
+
+  const removeProjectDetails = () => {
+    setProjectDetails(null)
+  }
+
   return (
     <div className="min-h-screen bg-white flex justify-center px-4 py-16">
       <Card className="w-full max-w-2xl border-0 shadow-none">
@@ -66,6 +79,30 @@ const HomePage = () => {
               </div>
             )}
 
+            {/* Project Details Display */}
+            {projectDetails && (
+              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                <span className="text-green-600">📋</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-green-800 font-medium truncate">
+                    {projectDetails.title || 'Project Details'}
+                  </div>
+                  {projectDetails.description && (
+                    <div className="text-xs text-green-600 truncate">
+                      {projectDetails.description}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={removeProjectDetails}
+                  className="text-red-500 hover:text-red-700 transition-colors p-1 rounded-full hover:bg-red-50"
+                  title="Remove project details"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             <div className='flex items-center gap-4'>
               <div className="relative flex-1">
                 <Input
@@ -80,7 +117,7 @@ const HomePage = () => {
                   />
                 </div>
               </div>
-              <IoFilterOutline className="w-8 h-8 text-gray-400 cursor-pointer hover:text-gray-600" />
+              <IoFilterOutline onClick={() => setManualFormDialogOpen(true)} className="w-8 h-8 text-gray-400 cursor-pointer hover:text-gray-600" />
             </div>
           </div>
 
@@ -101,6 +138,13 @@ const HomePage = () => {
         open={uploadDialogOpen}
         onOpenChange={setUploadDialogOpen}
         onImageConfirm={handleImageConfirm}
+      />
+
+      {/* Manual Form Dialog */}
+      <ManualFormDialog
+        open={manualFormDialogOpen}
+        onOpenChange={setManualFormDialogOpen}
+        onSubmit={handleManualFormSubmit}
       />
     </div>
   )
