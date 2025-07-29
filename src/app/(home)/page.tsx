@@ -1,15 +1,15 @@
 "use client"
 
-import React, { useState, useCallback } from 'react'
-import { FaCamera, FaLink, FaBars, FaBolt } from 'react-icons/fa'
-import { IoFilterOutline } from 'react-icons/io5'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { UploadDialog } from '@/app/_components/upload-dialog'
-import { ManualFormDialog } from '../_components/manual-form-dialog'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { ImagePreviewDialog } from '@/components/ui/image-preview-dialog'
+import { Input } from '@/components/ui/input'
 import Image from 'next/image'
+import { useCallback, useState } from 'react'
+import { FaBolt, FaCamera, FaLink } from 'react-icons/fa'
+import { IoFilterOutline } from 'react-icons/io5'
+import { ManualFormDialog } from '../_components/manual-form-dialog'
 
 const HomePage = () => {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)

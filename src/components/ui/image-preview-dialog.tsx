@@ -1,13 +1,13 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from 'react'
-import { FaTimes, FaChevronLeft, FaChevronRight, FaExpand, FaCompress, FaSearchPlus, FaSearchMinus } from 'react-icons/fa'
 import {
     Dialog,
     DialogContent,
     DialogTitle,
 } from '@/components/ui/dialog'
 import Image from 'next/image'
+import React, { useCallback, useEffect, useState } from 'react'
+import { FaChevronLeft, FaChevronRight, FaSearchMinus, FaSearchPlus, FaTimes } from 'react-icons/fa'
 
 interface ImageData {
     src: string

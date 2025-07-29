@@ -29,7 +29,7 @@ export function ManualFormDialog({ open, onOpenChange, onSubmit }: ManualFormDia
         setIsSubmitting(true)
 
         try {
-            await onSubmit?.({ title, description })
+            onSubmit?.({ title, description })
             // Reset form
             setTitle('')
             setDescription('')
