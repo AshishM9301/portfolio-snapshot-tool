@@ -10,6 +10,9 @@ The Portfolio Snapshot Tool is designed to help developers showcase their projec
 - 📝 Manual project input form
 - 🖼️ Image upload functionality  
 - 🎨 Dynamic snapshot card preview
+- 🤖 AI-powered website snapshot generation
+- 📸 Automatic website screenshot capture
+- 🎯 Multiple AI-generated portfolio variations
 - 📤 Export/share capabilities (PNG/JPG)
 - 📱 Fully responsive design
 - 🐦 Social media sharing (Twitter/X)
@@ -22,10 +25,44 @@ The Portfolio Snapshot Tool is designed to help developers showcase their projec
 - **Backend**: tRPC for type-safe APIs
 - **Database**: Prisma + SQLite
 - **Authentication**: Firebase Auth
+- **AI Integration**: OpenRouter API (Claude 3.5 Sonnet, GPT-4 Vision)
+- **Screenshot**: Puppeteer for website capture
 - **Deployment**: Vercel
 - **Package Manager**: Bun
 - **Linting**: Biome
 - **Loading**: react-top-loading-bar
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ or Bun
+- OpenRouter API key (get one at [openrouter.ai](https://openrouter.ai/keys))
+
+### Environment Setup
+Create a `.env` file in the root directory with the following variables:
+
+```env
+# Database
+DATABASE_URL="file:./db.sqlite"
+
+# OpenRouter API Key (Required for AI features)
+OPENROUTER_API_KEY="your_openrouter_api_key_here"
+
+# App URL (optional)
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+### Installation & Development
+```bash
+# Install dependencies
+bun install
+
+# Set up database
+bun run db:generate
+
+# Start development server
+bun run dev
+```
 
 ## 📁 Project Structure
 
@@ -39,8 +76,11 @@ portfolio-snapshot-tool/
 │   │   └── page.tsx        # Home page
 │   ├── components/         # Reusable UI components
 │   ├── lib/               # Utility functions
+│   │   ├── openrouter.ts  # AI integration
+│   │   └── screenshot.ts  # Screenshot utilities
 │   ├── server/            # Server-side logic
 │   │   └── api/           # tRPC routers
+│   │       └── snapshot.ts # AI snapshot generation
 │   ├── styles/            # Global styles
 │   └── trpc/              # tRPC configuration
 ├── prisma/                # Database schema
