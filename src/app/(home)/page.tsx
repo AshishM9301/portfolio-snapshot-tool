@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { FaCamera, FaLink, FaBars, FaBolt } from 'react-icons/fa'
 import { IoFilterOutline } from 'react-icons/io5'
 import { Card, CardContent } from '@/components/ui/card'
@@ -8,23 +8,28 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { UploadDialog } from '@/app/_components/upload-dialog'
 import { ManualFormDialog } from '../_components/manual-form-dialog'
+import { ImagePreviewDialog } from '@/components/ui/image-preview-dialog'
+import Image from 'next/image'
 
 const HomePage = () => {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [manualFormDialogOpen, setManualFormDialogOpen] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<File | null>(null)
-  const [imageName, setImageName] = useState<string>('')
+  const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [projectDetails, setProjectDetails] = useState<{ title: string; description: string } | null>(null)
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
 
-  const handleImageConfirm = (file: File) => {
-    setSelectedImage(file)
-    setImageName(file.name)
-    console.log('Image confirmed:', file.name)
+  const handleImageConfirm = (files: File[]) => {
+    setSelectedImages(files)
+    console.log('Images confirmed:', files.map(f => f.name))
   }
 
-  const removeImage = () => {
-    setSelectedImage(null)
-    setImageName('')
+  const removeImage = (fileToRemove?: File) => {
+    if (fileToRemove) {
+      setSelectedImages(prev => prev.filter(file => file !== fileToRemove))
+    } else {
+      setSelectedImages([])
+    }
   }
 
   const handleManualFormSubmit = (data: { title: string; description: string }) => {
@@ -35,6 +40,25 @@ const HomePage = () => {
   const removeProjectDetails = () => {
     setProjectDetails(null)
   }
+
+  const getImageDisplayText = () => {
+    if (selectedImages.length === 0) return ''
+    if (selectedImages.length === 1) return selectedImages[0]?.name ?? ''
+    return `${selectedImages.length} images selected`
+  }
+
+  const getTotalSize = () => {
+    return selectedImages.reduce((total, file) => total + file.size, 0)
+  }
+
+  const getTotalSizeMB = () => {
+    return (getTotalSize() / 1024 / 1024).toFixed(2)
+  }
+
+  const handleImageClick = useCallback((index: number) => {
+    setSelectedImageIndex(index)
+    setImagePreviewOpen(true)
+  }, [])
 
   return (
     <div className="min-h-screen bg-white flex justify-center px-4 py-16">
@@ -62,20 +86,55 @@ const HomePage = () => {
 
           {/* Input Section */}
           <div className="space-y-4">
-            {/* Image Name Display */}
-            {imageName && (
-              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <span className="text-blue-600">📎</span>
-                <span className="text-sm text-blue-800 font-medium flex-1 truncate">
-                  {imageName}
-                </span>
-                <button
-                  onClick={removeImage}
-                  className="text-red-500 hover:text-red-700 transition-colors p-1 rounded-full hover:bg-red-50"
-                  title="Remove image"
-                >
-                  ✕
-                </button>
+            {/* Images Display */}
+            {selectedImages.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <span className="text-blue-600">📎</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-blue-800 font-medium">
+                      {getImageDisplayText()}
+                    </span>
+                    <span className="text-xs text-blue-600 ml-2">
+                      • {getTotalSizeMB()} MB
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => removeImage()}
+                    className="text-red-500 hover:text-red-700 transition-colors p-1 rounded-full hover:bg-red-50"
+                    title="Remove all images"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Image Previews Grid */}
+                <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto">
+                  {selectedImages.map((file, index) => (
+                    <div key={`${file.name}-${file.size}-${file.lastModified}`} className="relative group">
+                      <div
+                        className="w-full aspect-square bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() => handleImageClick(index)}
+                      >
+                        <Image
+                          src={URL.createObjectURL(file)}
+                          alt={`Preview ${index + 1}`}
+                          fill
+                          className="w-full h-full object-cover border border-gray-200 rounded-lg"
+                        />
+                      </div>
+
+                      {/* Remove Individual Image Button */}
+                      <button
+                        onClick={() => removeImage(file)}
+                        className="absolute top-0 right-0 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -107,7 +166,7 @@ const HomePage = () => {
               <div className="relative flex-1">
                 <Input
                   type="url"
-                  placeholder={imageName ? "Image attached - Enter portfolio URL..." : "Enter portfolio URL..."}
+                  placeholder={selectedImages.length > 0 ? "Images attached - Enter portfolio URL..." : "Enter portfolio URL..."}
                   className="w-full h-12 pl-4 pr-12 text-lg border-gray-200 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
@@ -138,6 +197,8 @@ const HomePage = () => {
         open={uploadDialogOpen}
         onOpenChange={setUploadDialogOpen}
         onImageConfirm={handleImageConfirm}
+        maxFiles={10}
+        maxSize={50} // 50MB total limit
       />
 
       {/* Manual Form Dialog */}
@@ -145,6 +206,20 @@ const HomePage = () => {
         open={manualFormDialogOpen}
         onOpenChange={setManualFormDialogOpen}
         onSubmit={handleManualFormSubmit}
+      />
+
+      {/* Image Preview Dialog */}
+      <ImagePreviewDialog
+        open={imagePreviewOpen}
+        onOpenChange={setImagePreviewOpen}
+        images={selectedImages.map((file, index) => ({
+          src: URL.createObjectURL(file),
+          alt: `Preview ${index + 1}`,
+          name: file.name,
+          size: file.size,
+        }))}
+        currentIndex={selectedImageIndex}
+        onIndexChange={setSelectedImageIndex}
       />
     </div>
   )
