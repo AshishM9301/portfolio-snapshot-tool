@@ -1,0 +1,9 @@
+# Use Bun or Node.js as base image
+FROM oven/bun:latest
+
+WORKDIR /app
+COPY . .
+
+RUN bun install
+
+CMD ["bun", "src/server/worker/ai-snapshot-worker.ts"]
