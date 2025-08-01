@@ -48,7 +48,7 @@ export function AISnapshotTester() {
                 body: JSON.stringify({ urls }),
             })
             const data = await res.json() as BatchSnapshotResponse
-            if (!res.ok) throw new Error(data.error ?? 'Failed to start batch')
+            if (!res.ok) throw new Error('Failed to start batch')
             setJobIds(data.jobIds)
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : 'Unknown error';

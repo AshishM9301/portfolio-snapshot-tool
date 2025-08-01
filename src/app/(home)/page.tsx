@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { UrlChip } from '@/components/ui/url-chip'
 import { useSnapshotStore } from '@/lib/stores/snapshot-store'
 import { extractUrlsFromText, validateUrl, type UrlValidationResult } from '@/lib/utils'
+import { analyzeTextInput, validateTextAnalysis, mergeWithDefaults, getDefaultPreferences, type TextAnalysisResult } from '@/lib/text-analyzer'
 import { api } from '@/trpc/react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -34,10 +35,24 @@ const HomePage = () => {
   const [isValidating, setIsValidating] = useState(false)
   const [hasValidated, setHasValidated] = useState(false)
 
+  // Text analysis states
+  const [textAnalysis, setTextAnalysis] = useState<TextAnalysisResult | null>(null)
+  const [analysisErrors, setAnalysisErrors] = useState<string[]>([])
+  const [analysisWarnings, setAnalysisWarnings] = useState<string[]>([])
+
   // Update URL results when input changes (only for display, not validation)
   useEffect(() => {
     if (urlInput.trim()) {
-      const extractedUrls = extractUrlsFromText(urlInput)
+      // Analyze text input for URLs and styling preferences
+      const analysis = analyzeTextInput(urlInput)
+      const validation = validateTextAnalysis(analysis)
+      const finalAnalysis = mergeWithDefaults(validation.cleanedResult)
+
+      setTextAnalysis(finalAnalysis)
+      setAnalysisErrors(validation.errors)
+      setAnalysisWarnings(validation.warnings)
+
+      const extractedUrls = finalAnalysis.urls
       const newResults: UrlValidationResult[] = extractedUrls.map(url => ({
         url,
         isValid: false,
@@ -47,6 +62,9 @@ const HomePage = () => {
       setUrlResults(newResults)
     } else {
       setUrlResults([])
+      setTextAnalysis(null)
+      setAnalysisErrors([])
+      setAnalysisWarnings([])
     }
     setHasValidated(false)
   }, [urlInput])
@@ -152,28 +170,20 @@ const HomePage = () => {
     setImagePreviewOpen(true)
   }, [])
 
-  // Enhanced AI Snapshot generation mutation
-  const generateEnhancedSnapshotsMutation = api.snapshot.generateEnhancedSnapshots.useMutation({
-    onSuccess: (result) => {
-      setSnapshots(result.snapshots)
-      setIsGenerating(false)
-      router.push('/snapshots')
-    },
-    onError: (error) => {
-      console.error('Failed to generate enhanced snapshots:', error)
-      setIsGenerating(false)
-      // You can add toast notification here
-    }
-  })
-
-
-
 
 
   const handleGenerateSnapshot = async () => {
     console.log('Current URL input:', urlInput)
+    console.log('Current text analysis:', textAnalysis)
     console.log('Current URL results:', urlResults)
     console.log('Has validated:', hasValidated)
+
+    // Check for analysis errors first
+    if (analysisErrors.length > 0) {
+      console.error('Text analysis errors:', analysisErrors)
+      alert(`Please fix the following issues:\n${analysisErrors.join('\n')}`)
+      return
+    }
 
     // If no URLs are detected, try to extract them first
     if (urlResults.length === 0 && urlInput.trim()) {
@@ -239,16 +249,36 @@ const HomePage = () => {
           console.log('Re-validated URLs:', reValidatedUrls)
 
           if (reValidatedUrls.length > 0) {
-            const urlToProcess = reValidatedUrls[0]!
-            console.log('Using re-validated URL:', urlToProcess)
+            console.log('Using re-validated URLs:', reValidatedUrls)
 
-            setCurrentUrl(urlToProcess)
+            setCurrentUrl(reValidatedUrls[0]!) // Set first URL as current for display purposes
             setIsGenerating(true)
-            generateEnhancedSnapshotsMutation.mutate({
-              url: urlToProcess,
-              style: 'professional',
-              aspectRatio: '16:9'
-            })
+
+            // Use text analysis preferences or defaults
+            const preferences = textAnalysis ?? getDefaultPreferences(reValidatedUrls)
+
+            // Use batch job system for better image quality and progress tracking
+            try {
+              const res = await fetch('/api/batch-snapshots', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ urls: reValidatedUrls }),
+              })
+              const data = await res.json() as { error?: string; jobIds?: string[] }
+              if (!res.ok) throw new Error(data.error ?? 'Failed to start batch')
+
+              // Navigate to snapshots page with job IDs
+              if (data.jobIds && data.jobIds.length > 0) {
+                const jobIdsParam = data.jobIds.join(',')
+                router.push(`/snapshots?jobs=${jobIdsParam}`)
+              } else {
+                router.push('/snapshots')
+              }
+            } catch (err: unknown) {
+              const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+              console.error('Failed to start batch job:', errorMessage)
+              setIsGenerating(false)
+            }
             return
           }
         } catch (error) {
@@ -263,17 +293,37 @@ const HomePage = () => {
       return
     }
 
-    // Generate snapshots for the first valid URL
-    const urlToProcess = validUrls[0]!
-    console.log('Generating AI snapshots for URL:', urlToProcess)
+    // Generate snapshots for ALL valid URLs
+    console.log('Generating snapshots for URLs:', validUrls)
 
-    setCurrentUrl(urlToProcess)
+    setCurrentUrl(validUrls[0]!) // Set first URL as current for display purposes
     setIsGenerating(true)
-    generateEnhancedSnapshotsMutation.mutate({
-      url: urlToProcess,
-      style: 'portfolio-multi', // Use portfolio style by default
-      aspectRatio: '16:9' // Default aspect ratio
-    })
+
+    // Use text analysis preferences or defaults
+    const preferences = textAnalysis ?? getDefaultPreferences(validUrls)
+
+    // Use batch job system for better image quality and progress tracking
+    try {
+      const res = await fetch('/api/batch-snapshots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ urls: validUrls }),
+      })
+      const data = await res.json() as { error?: string; jobIds?: string[] }
+      if (!res.ok) throw new Error(data.error ?? 'Failed to start batch')
+
+      // Navigate to snapshots page with job IDs
+      if (data.jobIds && data.jobIds.length > 0) {
+        const jobIdsParam = data.jobIds.join(',')
+        router.push(`/snapshots?jobs=${jobIdsParam}`)
+      } else {
+        router.push('/snapshots')
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Failed to start batch job:', errorMessage)
+      setIsGenerating(false)
+    }
   }
 
   return (
@@ -385,7 +435,7 @@ const HomePage = () => {
                   type="text"
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
-                  placeholder={selectedImages.length > 0 ? "Images attached - Enter portfolio URLs..." : "Enter portfolio URLs (e.g., 'I have www.google.com and youtube.com')..."}
+                  placeholder={selectedImages.length > 0 ? "Images attached - Enter portfolio URLs..." : "Enter URLs and preferences (e.g., 'Create professional portfolio for google.com with 16:9 aspect ratio')..."}
                   className="w-full h-12 pl-4 pr-12 text-lg border-gray-200 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
@@ -435,6 +485,103 @@ const HomePage = () => {
                 )}
               </div>
             )}
+
+            {/* Text Analysis Results */}
+            {textAnalysis && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">
+                    Detected Preferences
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    AI Analysis
+                  </span>
+                </div>
+
+                {/* Style and Aspect Ratio */}
+                <div className="flex flex-wrap gap-2">
+                  {textAnalysis.style && (
+                    <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                      Style: {textAnalysis.style.replace('-', ' ')}
+                      {textAnalysis.confidence.style > 50 && (
+                        <span className="text-blue-600">({textAnalysis.confidence.style}%)</span>
+                      )}
+                    </div>
+                  )}
+                  {textAnalysis.aspectRatio && (
+                    <div className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                      {textAnalysis.aspectRatio}
+                      {textAnalysis.confidence.aspectRatio > 50 && (
+                        <span className="text-green-600">({textAnalysis.confidence.aspectRatio}%)</span>
+                      )}
+                    </div>
+                  )}
+                  {textAnalysis.quality && (
+                    <div className="flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                      <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                      {textAnalysis.quality} quality
+                      {textAnalysis.confidence.quality > 50 && (
+                        <span className="text-purple-600">({textAnalysis.confidence.quality}%)</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Custom Title and Description */}
+                {(textAnalysis.customTitle ?? textAnalysis.customDescription) && (
+                  <div className="space-y-2">
+                    {textAnalysis.customTitle && (
+                      <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <span className="text-yellow-600">📝</span>
+                        <div className="flex-1">
+                          <div className="text-xs text-yellow-800 font-medium">Custom Title</div>
+                          <div className="text-sm text-yellow-700">{textAnalysis.customTitle}</div>
+                        </div>
+                      </div>
+                    )}
+                    {textAnalysis.customDescription && (
+                      <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <span className="text-yellow-600">📄</span>
+                        <div className="flex-1">
+                          <div className="text-xs text-yellow-800 font-medium">Custom Description</div>
+                          <div className="text-sm text-yellow-700">{textAnalysis.customDescription}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Device Preferences */}
+                {(textAnalysis.includeMobile ?? textAnalysis.includeTablet) && (
+                  <div className="flex flex-wrap gap-2">
+                    {textAnalysis.includeMobile && (
+                      <div className="flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs">
+                        📱 Mobile
+                      </div>
+                    )}
+                    {textAnalysis.includeTablet && (
+                      <div className="flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs">
+                        📱 Tablet
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Analysis Warnings */}
+                {analysisWarnings.length > 0 && (
+                  <div className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                    <div className="font-medium mb-1">⚠️ Analysis Warnings:</div>
+                    <ul className="list-disc list-inside space-y-1">
+                      {analysisWarnings.map((warning, index) => (
+                        <li key={index} className="text-xs">{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Action Section */}
@@ -447,12 +594,12 @@ const HomePage = () => {
               {isGenerating ? (
                 <>
                   <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                  AI Generating Snapshots...
+                  AI Generating Unique Snapshot...
                 </>
               ) : (
                 <>
                   <FaMagic className="w-5 h-5 mr-2" />
-                  {isValidating ? 'Validating URLs...' : 'Validate & Generate Snapshots'}
+                  {isValidating ? 'Validating URLs...' : 'Validate & Generate AI Snapshot'}
                 </>
               )}
             </Button>
@@ -490,10 +637,7 @@ const HomePage = () => {
         onIndexChange={setSelectedImageIndex}
       />
 
-      {/* AI Snapshot Tester */}
-      <div className="mt-12">
-        <AISnapshotTester />
-      </div>
+
 
     </div>
   )

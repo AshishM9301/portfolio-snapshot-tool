@@ -249,6 +249,9 @@ ${qualityInstructions}
 13. **CRITICAL**: All content must be visible within the fixed 1200x675px dimensions
 14. Use compact, efficient layouts that maximize space utilization
 15. Prioritize the most important information to fit within height constraints
+16. **CRITICAL**: Add CSS to prevent any scrolling: \`html, body { overflow: hidden !important; height: 675px !important; }\`
+17. **CRITICAL**: Use \`max-height: 675px\` and \`overflow: hidden\` on all container elements
+18. **CRITICAL**: Ensure all text and images are sized to fit within the 675px height constraint
 
 **Screenshot Integration Guidelines - Make It POP:**
 - Display the desktop screenshot prominently (minimum 50% of card width) as the HERO element

@@ -268,18 +268,24 @@ function ensureViewportMeta(html: string): string {
 // Ensure proper dimensions for portfolio card
 function ensureProperDimensions(html: string): string {
     const dimensionCSS = `
-    body { 
-      width: 1200px; 
-      height: 675px; 
-      margin: 0; 
-      padding: 0; 
-      overflow: hidden; 
+    html, body { 
+      width: 1200px !important; 
+      height: 675px !important; 
+      margin: 0 !important; 
+      padding: 0 !important; 
+      overflow: hidden !important; 
+      max-height: 675px !important;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
-    html {
-      width: 1200px;
-      height: 675px;
-      overflow: hidden;
+    
+    * {
+      max-height: 675px !important;
+      overflow: hidden !important;
+    }
+    
+    .portfolio-card, .card, .container, div {
+      max-height: 675px !important;
+      overflow: hidden !important;
     }
   `
 
