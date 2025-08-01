@@ -161,7 +161,7 @@ export async function scrapeWebsiteData(url: string): Promise<WebsiteData> {
             category: '', // Will be filled by AI analysis
             features: websiteData.features,
             targetAudience: '', // Will be filled by AI analysis
-            screenshot: screenshot.toString('base64'),
+            screenshot: Buffer.from(screenshot).toString('base64'),
             metadata: websiteData.metadata
         }
 

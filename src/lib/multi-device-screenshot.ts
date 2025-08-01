@@ -76,7 +76,7 @@ async function captureScreenshot(
         })
 
         // Convert to base64
-        const base64 = screenshot.toString('base64')
+        const base64 = Buffer.from(screenshot).toString('base64')
         return base64
 
     } catch (error) {

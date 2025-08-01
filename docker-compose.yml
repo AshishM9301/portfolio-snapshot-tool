@@ -1,43 +1,33 @@
-version: '3.8'
 services:
+  # Redis for BullMQ
   redis:
     image: redis:7
     ports:
       - "6379:6379"
     restart: unless-stopped
 
-  # Example for Postgres (if you use it)
-  # db:
-  #   image: postgres:15
-  #   environment:
-  #     POSTGRES_USER: youruser
-  #     POSTGRES_PASSWORD: yourpassword
-  #     POSTGRES_DB: yourdb
-  #   ports:
-  #     - "5432:5432"
-  #   restart: unless-stopped
-
   # BullMQ worker (will run your worker code)
   worker:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    env_file:
+      - .env
     environment:
       - REDIS_URL=redis://redis:6379
-      # Add DB env vars as needed
+      - NUM_WORKERS=3
     depends_on:
       - redis
-      # - db
     restart: unless-stopped
 
+  # Cleanup service
   cleanup:
     build:
       context: .
       dockerfile: Dockerfile.worker
     command: bun run src/server/worker/cleanup-old-jobs.ts
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
+    env_file:
+      - .env
     depends_on:
       - redis
-      # - db  # Uncomment if you use a DB service
     restart: unless-stopped

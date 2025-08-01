@@ -1,0 +1,12 @@
+services:
+  db-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: bun run prisma migrate deploy
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/portfolio_snapshot
+    depends_on:
+      - db
+    profiles:
+      - init 

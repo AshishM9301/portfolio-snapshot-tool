@@ -1,13 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { api } from '@/trpc/react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Loader2, Download, Eye, Smartphone, Tablet, Monitor } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { useState } from 'react'
 import { JobStatus } from './job-status'
+import type { BatchSnapshotResponse } from '@/types'
 
 export function AISnapshotTester() {
     const [urls, setUrls] = useState([''])
@@ -49,11 +47,12 @@ export function AISnapshotTester() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ urls }),
             })
-            const data = await res.json()
-            if (!res.ok) throw new Error(data.error || 'Failed to start batch')
+            const data = await res.json() as BatchSnapshotResponse
+            if (!res.ok) throw new Error(data.error ?? 'Failed to start batch')
             setJobIds(data.jobIds)
-        } catch (err: any) {
-            setErrors([err.message])
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            setErrors([errorMessage])
         } finally {
             setIsSubmitting(false)
         }
@@ -128,7 +127,7 @@ export function AISnapshotTester() {
                     <h2 className="text-xl font-semibold mb-4">Job Status</h2>
                     <div className="space-y-4">
                         {jobIds.map((jobId, idx) => (
-                            <JobStatus key={jobId} jobId={jobId} url={urls[idx]} />
+                            <JobStatus key={jobId} jobId={jobId} url={urls[idx] ?? ''} />
                         ))}
                     </div>
                 </Card>

@@ -1,12 +1,13 @@
 "use client"
 
+import type { GeneratedSnapshot } from '@/types/snapshot'
 import { useState } from 'react'
+import { FaDownload, FaEye, FaShare } from 'react-icons/fa'
+import { IoRefresh } from 'react-icons/io5'
+import { Badge } from './badge'
 import { Button } from './button'
 import { Card, CardContent } from './card'
-import { Badge } from './badge'
-import { FaDownload, FaShare, FaEye } from 'react-icons/fa'
-import { IoRefresh } from 'react-icons/io5'
-import type { GeneratedSnapshot } from '@/types/snapshot'
+import Image from 'next/image'
 
 interface SnapshotSelectorProps {
     snapshots: GeneratedSnapshot[]
@@ -131,10 +132,11 @@ export function SnapshotSelector({
                             {/* Snapshot Preview */}
                             <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden mb-3">
                                 {snapshot.pngUrl ? (
-                                    <img
+                                    <Image
                                         src={snapshot.pngUrl}
                                         alt={snapshot.description}
                                         className="w-full h-full object-cover"
+                                        fill
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-gray-500">

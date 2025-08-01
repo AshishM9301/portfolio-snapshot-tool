@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
             try {
                 const dnsResponse = await fetch(`https://dns.google/resolve?name=${urlObj.hostname}`)
                 if (dnsResponse.ok) {
-                    const dnsData = await dnsResponse.json()
+                    const dnsData = await dnsResponse.json() as { Answer?: unknown[] }
                     const hasValidRecords = dnsData.Answer && dnsData.Answer.length > 0
 
                     return NextResponse.json({
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
                         error: hasValidRecords ? undefined : 'Domain not found or not accessible'
                     })
                 }
-            } catch (dnsError) {
+            } catch {
                 // If DNS check also fails, return false
                 return NextResponse.json({
                     isAccessible: false,

@@ -1,4 +1,4 @@
-# Use Bun as base image
+# Worker-Only Dockerfile - Includes full Next.js app but optimized for worker usage
 FROM oven/bun:latest
 
 # Install system dependencies for Puppeteer
@@ -31,11 +31,21 @@ COPY package.json bun.lock ./
 COPY prisma ./prisma/
 RUN bun install
 
-# Copy the rest of the application
+# Copy the rest of the application (full Next.js app)
 COPY . .
 
 # Generate Prisma client
 RUN bun run prisma generate
 
+# Build the Next.js app (needed for API routes)
+RUN bun run build
+
+# Create temp directory for shared images
+RUN mkdir -p /app/temp/images
+
+# Set environment for worker-only mode
+ENV NODE_ENV=production
+ENV WORKER_MODE=true
+
 # Use the worker manager to spawn multiple workers
-CMD ["bun", "src/server/worker/worker-manager.ts"]
+CMD ["bun", "src/server/worker/worker-manager.ts"] 

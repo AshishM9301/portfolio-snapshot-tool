@@ -1,15 +1,17 @@
-import { NextRequest } from 'next/server';
+import { env } from '@/env';
 import { PrismaClient } from '@prisma/client';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
+import type { NextRequest } from 'next/server';
 
 const prisma = new PrismaClient();
-const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379');
+const redisUrl = env.REDIS_URL ?? 'redis://localhost:6379';
+const connection = new IORedis(redisUrl);
 const queue = new Queue('ai-snapshot-queue', { connection });
 
 export async function POST(req: NextRequest) {
     try {
-        const { urls } = await req.json();
+        const { urls } = await req.json() as { urls: string[] };
         if (!Array.isArray(urls) || urls.length === 0 || urls.length > 3) {
             return new Response(JSON.stringify({ error: 'Provide 1-3 URLs.' }), { status: 400 });
         }
@@ -32,7 +34,8 @@ export async function POST(req: NextRequest) {
             jobIds.push(job.id);
         }
         return new Response(JSON.stringify({ jobIds }), { status: 200 });
-    } catch (err: any) {
-        return new Response(JSON.stringify({ error: err?.message || 'Unknown error' }), { status: 500 });
+    } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        return new Response(JSON.stringify({ error: errorMessage }), { status: 500 });
     }
 } 

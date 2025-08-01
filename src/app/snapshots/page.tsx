@@ -2,26 +2,27 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { DataLostMessage } from "@/components/ui/data-lost-message"
-import { SnapshotPreview, FullscreenPreview } from "@/components/ui/snapshot-preview"
+import { FullscreenPreview, SnapshotPreview } from "@/components/ui/snapshot-preview"
+import { downloadSnapshotAsPNG } from "@/lib/download-utils"
 import { useSnapshotStore } from "@/lib/stores/snapshot-store"
 import { api } from "@/trpc/react"
-import { downloadSnapshotAsPNG } from "@/lib/download-utils"
-import { ArrowLeft, RefreshCw, Home, Download } from "lucide-react"
+import type { GeneratedSnapshot } from "@/types"
+import { ArrowLeft, Download, Home, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import type { GeneratedSnapshot } from "@/types"
 
 export default function SnapshotsPage() {
     const router = useRouter()
-    const { snapshots, currentUrl, hasGenerated, setSnapshots, setIsGenerating, setCurrentUrl } = useSnapshotStore()
+    const { snapshots, currentUrl, hasGenerated, setSnapshots, setIsGenerating } = useSnapshotStore()
     const [selectedSnapshot, setSelectedSnapshot] = useState<GeneratedSnapshot | null>(null)
     const [fullscreenOpen, setFullscreenOpen] = useState(false)
     const [isDownloading, setIsDownloading] = useState(false)
 
     // Check if data is lost on page load
     const [isDataLost, setIsDataLost] = useState(false)
+
+    console.log(isDownloading)
 
     useEffect(() => {
         // Check if we have snapshots in store
@@ -61,9 +62,9 @@ export default function SnapshotsPage() {
         router.push('/')
     }
 
-    const handleSnapshotSelect = (snapshot: GeneratedSnapshot) => {
-        setSelectedSnapshot(snapshot)
-    }
+    // const handleSnapshotSelect = (snapshot: GeneratedSnapshot) => {
+    //     setSelectedSnapshot(snapshot)
+    // }
 
     const handleDownload = async (snapshot: GeneratedSnapshot) => {
         try {

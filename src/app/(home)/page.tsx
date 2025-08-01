@@ -6,16 +6,16 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ImagePreviewDialog } from '@/components/ui/image-preview-dialog'
 import { Input } from '@/components/ui/input'
 import { UrlChip } from '@/components/ui/url-chip'
+import { useSnapshotStore } from '@/lib/stores/snapshot-store'
 import { extractUrlsFromText, validateUrl, type UrlValidationResult } from '@/lib/utils'
 import { api } from '@/trpc/react'
-import { useSnapshotStore } from '@/lib/stores/snapshot-store'
 import Image from 'next/image'
-import { useCallback, useEffect, useState } from 'react'
-import { FaBolt, FaCamera, FaLink, FaMagic } from 'react-icons/fa'
-import { IoFilterOutline } from 'react-icons/io5'
-import { ManualFormDialog } from '../_components/manual-form-dialog'
-import { AISnapshotTester } from '../_components/ai-snapshot-tester'
 import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import { FaCamera, FaLink, FaMagic } from 'react-icons/fa'
+import { IoFilterOutline } from 'react-icons/io5'
+import { AISnapshotTester } from '../_components/ai-snapshot-tester'
+import { ManualFormDialog } from '../_components/manual-form-dialog'
 
 const HomePage = () => {
   const router = useRouter()
@@ -166,19 +166,7 @@ const HomePage = () => {
     }
   })
 
-  // Legacy AI Snapshot generation mutation (for backward compatibility)
-  const generateSnapshotsMutation = api.snapshot.generateSnapshots.useMutation({
-    onSuccess: (snapshots) => {
-      setSnapshots(snapshots)
-      setIsGenerating(false)
-      router.push('/snapshots')
-    },
-    onError: (error) => {
-      console.error('Failed to generate snapshots:', error)
-      setIsGenerating(false)
-      // You can add toast notification here
-    }
-  })
+
 
 
 

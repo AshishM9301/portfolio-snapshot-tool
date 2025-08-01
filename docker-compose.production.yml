@@ -1,0 +1,67 @@
+services:
+  # Next.js App (Frontend + Backend) - User Access
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_APP_URL=http://app:3000
+      - REDIS_URL=${REDIS_URL}
+      - HOSTNAME=0.0.0.0
+    volumes:
+      - temp_images:/app/temp/images
+    restart: unless-stopped
+    command: ["bun", "run", "dev"]
+
+  # External Redis - no local Redis needed
+  # redis:
+  #   image: redis:7
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
+
+  # BullMQ worker (Backend only, no external ports)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker-only
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - NUM_WORKERS=3
+      - NODE_ENV=production
+      - WORKER_MODE=true
+      - NEXT_PUBLIC_APP_URL=http://app:3000
+    volumes:
+      - temp_images:/app/temp/images
+    # depends_on:
+    #   - redis
+    restart: unless-stopped
+
+  # Cleanup service
+  cleanup:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker-only
+    command: bun run src/server/worker/cleanup-old-jobs.ts
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - WORKER_MODE=true
+      - REDIS_URL=${REDIS_URL}
+    volumes:
+      - temp_images:/app/temp/images
+    # depends_on:
+    #   - redis
+    restart: unless-stopped
+
+# Define shared volumes
+volumes:
+  temp_images: 

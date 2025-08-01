@@ -44,7 +44,7 @@ export async function generateAIPortfolioHTML(
         // Save screenshots to temporary storage and get URLs
         console.log('Saving screenshots to temporary storage...')
         tempImages = await saveScreenshotsToTemp(screenshots, options)
-        console.log('Temporary image URLs:', Object.keys(tempImages).map(key => `${key}: ${tempImages[key].url}`))
+        console.log('Temporary image URLs:', Object.keys(tempImages).map(key => `${key}: ${tempImages[key]?.url ?? 'undefined'}`))
 
         // Test if images are accessible
         for (const [key, imageInfo] of Object.entries(tempImages)) {

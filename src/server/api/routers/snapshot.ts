@@ -113,7 +113,7 @@ async function captureWebsiteScreenshot(url: string): Promise<string> {
         })
 
         // Convert to base64
-        return screenshot.toString('base64')
+        return Buffer.from(screenshot).toString('base64')
 
     } catch (error) {
         console.error('Error capturing screenshot:', error)
@@ -226,7 +226,7 @@ export const snapshotRouter = createTRPCRouter({
                 })
 
                 const page = await browser.newPage()
-                await page.setDefaultNavigationTimeout(10000)
+                page.setDefaultNavigationTimeout(10000)
 
                 const response = await page.goto(input.url, { waitUntil: 'domcontentloaded' })
 

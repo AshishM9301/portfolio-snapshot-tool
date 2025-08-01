@@ -64,10 +64,10 @@ export async function captureWebsiteScreenshot(
             type: format,
             quality: format === 'jpeg' ? quality : undefined,
             fullPage
-        } as any)
+        })
 
         // Convert to base64
-        const base64 = screenshot.toString('base64')
+        const base64 = Buffer.from(screenshot).toString('base64')
         return base64
 
     } catch (error) {
@@ -85,14 +85,14 @@ export async function isUrlAccessible(url: string): Promise<boolean> {
     let browser
     try {
         browser = await puppeteer.launch({
-            headless: 'new',
+            headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
         })
 
         const page = await browser.newPage()
 
         // Set a short timeout for validation
-        await page.setDefaultNavigationTimeout(10000)
+        page.setDefaultNavigationTimeout(10000)
 
         const response = await page.goto(url, { waitUntil: 'domcontentloaded' })
 

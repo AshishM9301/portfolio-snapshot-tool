@@ -157,4 +157,25 @@ export const DEFAULT_AI_CONFIG: AIModelConfig = {
     topP: 1,
     frequencyPenalty: 0,
     presencePenalty: 0
-} 
+}
+
+
+export interface BatchSnapshotRequest {
+    urls: string[]
+}
+
+export interface BatchSnapshotResponse {
+    jobIds: string[]
+    error?: string
+}
+
+export interface BatchSnapshotJobStatus {
+    status: 'queued' | 'processing' | 'completed' | 'failed'
+    resultUrl?: string
+    error?: string
+}
+
+export interface BatchSnapshotJob {
+    id: string
+    status: 'queued' | 'processing' | 'completed' | 'failed'
+}

@@ -1,0 +1,7 @@
+services:
+  # Redis for BullMQ (only service needed in Docker for development)
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    restart: unless-stopped 

@@ -1,7 +1,7 @@
-# Use Bun as base image
+# App-Only Dockerfile - Optimized for Next.js production
 FROM oven/bun:latest
 
-# Install system dependencies for Puppeteer
+# Install system dependencies for Puppeteer (if needed)
 RUN apt-get update -y && apt-get install -y \
     openssl \
     libglib2.0-0 \
@@ -37,5 +37,18 @@ COPY . .
 # Generate Prisma client
 RUN bun run prisma generate
 
-# Use the worker manager to spawn multiple workers
-CMD ["bun", "src/server/worker/worker-manager.ts"]
+# Build the Next.js app
+RUN bun run build
+
+# Create temp directory for shared images
+RUN mkdir -p /app/temp/images
+
+# Set environment for app mode
+ENV NODE_ENV=production
+ENV WORKER_MODE=false
+
+# Expose port
+EXPOSE 3000
+
+# Start Next.js in production mode
+CMD ["bun", "run", "start"]

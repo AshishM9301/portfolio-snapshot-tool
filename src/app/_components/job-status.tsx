@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import type { JobStatusJson } from '@/types'
+import Image from 'next/image'
 
 interface JobStatusProps {
     jobId: string
@@ -19,20 +21,22 @@ export function JobStatus({ jobId, url }: JobStatusProps) {
         const poll = async () => {
             try {
                 const res = await fetch(`/api/job-status/${jobId}`)
-                const data = await res.json()
-                setStatus(data.status)
-                setResultUrl(data.resultUrl)
-                setError(data.error)
+                const data = await res.json() as JobStatusJson
+                setStatus(data.status as Status)
+                setResultUrl(data.resultUrl ?? null)
+                setError(data.error ?? null)
                 if (data.status === 'completed' || data.status === 'failed') {
                     stopped = true
                 }
-            } catch (err: any) {
-                setError(err.message)
+            } catch (err: unknown) {
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+                setError(errorMessage)
             }
         }
-        poll()
+        void poll()
+        // eslint-disable-next-line prefer-const
         interval = setInterval(() => {
-            if (!stopped) poll()
+            if (!stopped) void poll()
         }, 2000)
         return () => clearInterval(interval)
     }, [jobId])
@@ -58,7 +62,7 @@ export function JobStatus({ jobId, url }: JobStatusProps) {
                 {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
                 {status === 'completed' && resultUrl && (
                     <div className="flex-1">
-                        <img src={resultUrl} alt="Snapshot" className="w-full h-auto" />
+                        <Image src={resultUrl} alt="Snapshot" className="w-full h-auto" fill />
                     </div>
                 )}
             </div>
