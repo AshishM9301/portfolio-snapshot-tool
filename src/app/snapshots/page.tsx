@@ -10,10 +10,27 @@ import { api } from "@/trpc/react"
 import type { GeneratedSnapshot, JobStatusJson } from "@/types"
 import { ArrowLeft, Download, Home, RefreshCw } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { JobStatus } from "../_components/job-status"
 
+
 export default function SnapshotsPage() {
+    return (
+        <div className="min-h-screen bg-gray-50 py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <Suspense fallback={
+                    <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>
+                    </div>
+                }>
+                    <SnapshotsContent />
+                </Suspense>
+            </div>
+        </div>
+    )
+}
+
+function SnapshotsContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const { snapshots, currentUrl, hasGenerated, setSnapshots, setIsGenerating } = useSnapshotStore()

@@ -59,48 +59,142 @@ async function captureScreenshotBase64(url: string): Promise<string> {
     }
 }
 
+// NEW FUNCTION: Process image-based snapshots
+async function processImageSnapshot(
+    jobId: string,
+    imageData: string,
+    imageName: string,
+    imageType: string,
+    stylePreferences?: string
+): Promise<void> {
+    try {
+        // Check if job exists in database before processing
+        const existingJob = await prisma.job.findUnique({
+            where: { id: jobId }
+        });
+
+        if (!existingJob) {
+            console.log(`Job ${jobId} not found in database, skipping...`);
+            return;
+        }
+
+        await prisma.job.update({ where: { id: jobId }, data: { status: 'processing' } });
+
+        // Create a mock website analysis from the image
+        const mockAnalysis = {
+            websiteData: {
+                url: `image://${imageName}`,
+                title: `Portfolio from ${imageName}`,
+                description: 'AI-generated portfolio from uploaded image',
+                keywords: ['portfolio', 'design', 'creative'],
+                content: 'Portfolio content generated from image analysis',
+                purpose: 'portfolio',
+                category: 'design',
+                features: ['visual design', 'creative work'],
+                targetAudience: 'clients and employers',
+                screenshot: `data:${imageType};base64,${imageData}`,
+                metadata: {}
+            },
+            analysis: {
+                purpose: 'portfolio showcase',
+                category: 'design portfolio',
+                keyFeatures: ['visual design', 'creative work', 'professional presentation'],
+                targetAudience: 'clients and employers',
+                valueProposition: 'Professional portfolio showcasing creative work',
+                technologyIndicators: ['design tools', 'creative software'],
+                designStyle: 'modern'
+            }
+        };
+
+        // Generate AI HTML using the provided image
+        const htmlContent = await generateAIPortfolioHTML(
+            mockAnalysis,
+            { desktop: imageData },
+            { 
+                style: stylePreferences?.includes('professional') ? 'professional' : 
+                       stylePreferences?.includes('creative') ? 'creative' : 
+                       stylePreferences?.includes('minimal') ? 'minimal' : 'modern',
+                quality: 'high' 
+            }
+        );
+
+        // Convert HTML to PNG (buffer)
+        const pngBuffer = await convertHTMLToPNG(htmlContent, { deviceScaleFactor: 2, quality: 95 });
+
+        // Store PNG as data URL in DB
+        const dataUrl = `data:image/png;base64,${pngBuffer.toString('base64')}`;
+        await prisma.job.update({ where: { id: jobId }, data: { status: 'completed', resultUrl: dataUrl } });
+    } catch (err: unknown) {
+        console.error(`Error processing image job ${jobId}:`, err);
+        // Only update if job still exists
+        try {
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            await prisma.job.update({ where: { id: jobId }, data: { status: 'failed', error: errorMessage } });
+        } catch (updateErr) {
+            console.log(`Could not update job ${jobId} status:`, updateErr);
+        }
+    }
+}
+
 const worker = new Worker(
     queueName,
     async (job) => {
-        const { jobId, url } = job.data as { jobId: string; url: string };
-        try {
-            // Check if job exists in database before processing
-            const existingJob = await prisma.job.findUnique({
-                where: { id: jobId }
-            });
+        const { jobId, url, imageData, imageName, imageType, stylePreferences } = job.data as { 
+            jobId: string; 
+            url?: string; 
+            imageData?: string;
+            imageName?: string;
+            imageType?: string;
+            stylePreferences?: string;
+        };
 
-            if (!existingJob) {
-                console.log(`Job ${jobId} not found in database, skipping...`);
-                return;
-            }
-
-            await prisma.job.update({ where: { id: jobId }, data: { status: 'processing' } });
-
-            // Scrape and analyze
-            const websiteData = await scrapeWebsiteData(url);
-            const analysis = await analyzeWebsiteData(websiteData);
-
-            // Puppeteer screenshot (base64)
-            const screenshotBase64 = await captureScreenshotBase64(url);
-
-            // Generate AI HTML
-            const htmlContent = await generateAIPortfolioHTML(analysis, { desktop: screenshotBase64 }, { style: 'modern', quality: 'high' });
-
-            // Convert HTML to PNG (buffer)
-            const pngBuffer = await convertHTMLToPNG(htmlContent, { deviceScaleFactor: 2, quality: 95 });
-
-            // Store PNG as data URL in DB
-            const dataUrl = `data:image/png;base64,${pngBuffer.toString('base64')}`;
-            await prisma.job.update({ where: { id: jobId }, data: { status: 'completed', resultUrl: dataUrl } });
-        } catch (err: unknown) {
-            console.error(`Error processing job ${jobId}:`, err);
-            // Only update if job still exists
+        // Route to appropriate processing function based on job type
+        if (imageData && imageName && imageType) {
+            // Process image-based job
+            await processImageSnapshot(jobId, imageData, imageName, imageType, stylePreferences);
+        } else if (url) {
+            // Process URL-based job (existing functionality)
             try {
-                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-                await prisma.job.update({ where: { id: jobId }, data: { status: 'failed', error: errorMessage } });
-            } catch (updateErr) {
-                console.log(`Could not update job ${jobId} status:`, updateErr);
+                // Check if job exists in database before processing
+                const existingJob = await prisma.job.findUnique({
+                    where: { id: jobId }
+                });
+
+                if (!existingJob) {
+                    console.log(`Job ${jobId} not found in database, skipping...`);
+                    return;
+                }
+
+                await prisma.job.update({ where: { id: jobId }, data: { status: 'processing' } });
+
+                // Scrape and analyze
+                const websiteData = await scrapeWebsiteData(url);
+                const analysis = await analyzeWebsiteData(websiteData);
+
+                // Puppeteer screenshot (base64)
+                const screenshotBase64 = await captureScreenshotBase64(url);
+
+                // Generate AI HTML
+                const htmlContent = await generateAIPortfolioHTML(analysis, { desktop: screenshotBase64 }, { style: 'modern', quality: 'high' });
+
+                // Convert HTML to PNG (buffer)
+                const pngBuffer = await convertHTMLToPNG(htmlContent, { deviceScaleFactor: 2, quality: 95 });
+
+                // Store PNG as data URL in DB
+                const dataUrl = `data:image/png;base64,${pngBuffer.toString('base64')}`;
+                await prisma.job.update({ where: { id: jobId }, data: { status: 'completed', resultUrl: dataUrl } });
+            } catch (err: unknown) {
+                console.error(`Error processing job ${jobId}:`, err);
+                // Only update if job still exists
+                try {
+                    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+                    await prisma.job.update({ where: { id: jobId }, data: { status: 'failed', error: errorMessage } });
+                } catch (updateErr) {
+                    console.log(`Could not update job ${jobId} status:`, updateErr);
+                }
             }
+        } else {
+            throw new Error('Invalid job data: missing URL or image data');
         }
     },
     {

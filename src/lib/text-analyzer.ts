@@ -131,21 +131,21 @@ function extractCustomContent(lines: string[]): CustomContent {
 
   // Look for explicit patterns like "Title: ..." or "Description: ..."
   for (const line of lines) {
-    const titleMatch = line.match(/^(title|name|project):\s*(.+)$/i)
+    const titleMatch = /^(title|name|project):\s*(.+)$/i.exec(line)
     if (titleMatch && !content.title) {
-      content.title = titleMatch[2].trim()
+      content.title = titleMatch[2]?.trim() ?? ''
     }
 
-    const descMatch = line.match(/^(description|desc|about|summary):\s*(.+)$/i)
+    const descMatch = /^(description|desc|about|summary):\s*(.+)$/i.exec(line)
     if (descMatch && !content.description) {
-      content.description = descMatch[2].trim()
+      content.description = descMatch[2]?.trim() ?? ''
     }
   }
 
   // If no explicit title/description found, try to extract from context
   if (!content.title && lines.length > 0) {
     // Use first line as title if it doesn't contain a URL and looks like a title
-    const firstLine = lines[0]
+    const firstLine = lines[0] ?? ''
     if (!firstLine.includes('http') && !firstLine.includes('www') && firstLine.length < 100) {
       content.title = firstLine
     }
@@ -153,7 +153,7 @@ function extractCustomContent(lines: string[]): CustomContent {
 
   if (!content.description && lines.length > 1) {
     // Use second line as description if it doesn't contain a URL
-    const secondLine = lines[1]
+    const secondLine = lines[1] ?? ''
     if (!secondLine.includes('http') && !secondLine.includes('www') && secondLine.length < 200) {
       content.description = secondLine
     }
@@ -230,7 +230,7 @@ function calculateConfidenceScores(text: string, lines: string[], result: TextAn
  */
 export function getDefaultPreferences(urls: string[]): TextAnalysisResult {
   const isMultipleUrls = urls.length > 1
-  
+
   return {
     urls,
     style: isMultipleUrls ? 'portfolio-multi' : 'professional',
@@ -309,7 +309,7 @@ export function validateTextAnalysis(result: TextAnalysisResult): ValidationResu
  */
 export function mergeWithDefaults(analysis: TextAnalysisResult): TextAnalysisResult {
   const defaults = getDefaultPreferences(analysis.urls)
-  
+
   return {
     ...defaults,
     ...analysis,
@@ -317,8 +317,8 @@ export function mergeWithDefaults(analysis: TextAnalysisResult): TextAnalysisRes
     style: analysis.confidence.style > 50 ? analysis.style : defaults.style,
     aspectRatio: analysis.confidence.aspectRatio > 50 ? analysis.aspectRatio : defaults.aspectRatio,
     quality: analysis.confidence.quality > 50 ? analysis.quality : defaults.quality,
-    customTitle: analysis.customTitle || undefined,
-    customDescription: analysis.customDescription || undefined,
+    customTitle: analysis.customTitle ?? undefined,
+    customDescription: analysis.customDescription ?? undefined,
     includeMobile: analysis.includeMobile ?? defaults.includeMobile,
     includeTablet: analysis.includeTablet ?? defaults.includeTablet
   }

@@ -26,12 +26,18 @@ enum JobStatus {
     failed
 }
 
+enum JobType {
+    url
+    image
+}
+
 model Job {
     id        String    @id
-    url       String
+    url       String? // Optional for image jobs
     status    JobStatus
     resultUrl String?
     error     String?
+    jobType   JobType   @default(url)
     createdAt DateTime  @default(now())
     updatedAt DateTime  @updatedAt
 }

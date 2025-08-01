@@ -1,8 +1,8 @@
-import { AISnapshotTester } from '../_components/ai-snapshot-tester'
+import { ImageSnapshotTester } from '../_components/image-snapshot-tester'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
-export default function AITestPage() {
+export default function ImageTestPage() {
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-4xl mx-auto p-6">
@@ -10,14 +10,14 @@ export default function AITestPage() {
                     <h1 className="text-2xl font-bold">AI Testing Tools</h1>
                     <div className="flex gap-4">
                         <Link href="/ai-test">
-                            <Button variant="default">URL Testing</Button>
+                            <Button variant="outline">URL Testing</Button>
                         </Link>
                         <Link href="/image-test">
-                            <Button variant="outline">Image Testing</Button>
+                            <Button variant="default">Image Testing</Button>
                         </Link>
                     </div>
                 </div>
-                <AISnapshotTester />
+                <ImageSnapshotTester />
             </div>
         </div>
     )
