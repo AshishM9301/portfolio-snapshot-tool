@@ -39,38 +39,50 @@ export function UploadDialog({ open, onOpenChange, onImageConfirm, maxFiles = 10
         )
     }, [])
 
+    const addFile = useCallback((file: File) => {
+        setSelectedFiles(prevFiles => {
+            // Check if file is duplicate
+            if (isDuplicateFile(file, prevFiles)) {
+                return prevFiles
+            }
+
+            // Check file count limit
+            if (prevFiles.length >= maxFiles) {
+                return prevFiles
+            }
+
+            // Check total size limit
+            if (maxSize) {
+                const currentSize = calculateTotalSize(prevFiles)
+                const maxSizeBytes = maxSize * 1024 * 1024
+                if (currentSize + file.size > maxSizeBytes) {
+                    return prevFiles
+                }
+            }
+
+            return [...prevFiles, file]
+        })
+        setIsConfirming(true)
+    }, [maxFiles, maxSize, calculateTotalSize, isDuplicateFile])
+
     const onDrop = useCallback((acceptedFiles: File[]) => {
         if (acceptedFiles.length > 0) {
-            setSelectedFiles(prevFiles => {
-                // Filter out duplicates
-                const newFiles = acceptedFiles.filter(newFile => !isDuplicateFile(newFile, prevFiles))
-
-                // Check file count limit
-                if (prevFiles.length + newFiles.length > maxFiles) {
-                    const remainingSlots = maxFiles - prevFiles.length
-                    newFiles.splice(remainingSlots)
-                }
-
-                // Check total size limit
-                if (maxSize) {
-                    const currentSize = calculateTotalSize(prevFiles)
-                    const maxSizeBytes = maxSize * 1024 * 1024
-                    let totalSize = currentSize
-                    const validFiles = newFiles.filter(file => {
-                        if (totalSize + file.size <= maxSizeBytes) {
-                            totalSize += file.size
-                            return true
-                        }
-                        return false
-                    })
-                    return [...prevFiles, ...validFiles]
-                }
-
-                return [...prevFiles, ...newFiles]
-            })
-            setIsConfirming(true)
+            acceptedFiles.forEach(file => addFile(file))
         }
-    }, [maxFiles, maxSize, calculateTotalSize, isDuplicateFile])
+    }, [addFile])
+
+    // Clipboard paste handler
+    const handlePaste = useCallback((e: React.ClipboardEvent) => {
+        const items = Array.from(e.clipboardData.items)
+        items.forEach(item => {
+            if (item.type.startsWith('image/')) {
+                const file = item.getAsFile()
+                if (file) {
+                    addFile(file)
+                }
+            }
+        })
+    }, [addFile])
 
     const removeFile = useCallback((fileToRemove: File) => {
         setSelectedFiles(prevFiles => {
@@ -134,6 +146,7 @@ export function UploadDialog({ open, onOpenChange, onImageConfirm, maxFiles = 10
                         // Drop Zone View
                         <div
                             {...getRootProps()}
+                            onPaste={handlePaste}
                             className={`
                                 relative border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer
                                 ${isDragActive
@@ -166,6 +179,9 @@ export function UploadDialog({ open, onOpenChange, onImageConfirm, maxFiles = 10
                                 </p>
                                 <p className="text-xs text-gray-400">
                                     Up to {maxFiles} files {maxSize && `• Max ${maxSize}MB total`}
+                                </p>
+                                <p className="text-xs text-gray-400">
+                                    You can also paste images from clipboard
                                 </p>
                                 {isDragReject && (
                                     <p className="text-sm text-red-500">

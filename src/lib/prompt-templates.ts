@@ -346,4 +346,197 @@ Requirements:
 - Clean design
 
 Return ONLY the complete HTML document with embedded CSS.`
-} 
+}
+
+// ===== AI TEXT ANALYSIS PROMPTS =====
+
+// Text analysis prompt for extracting styling preferences and content
+export const TEXT_ANALYSIS_PROMPT = `Analyze the following text input and extract key information for creating portfolio snapshots.
+
+**Input Text:**
+{text}
+
+**Extract the following information:**
+
+1. **Style Preferences:**
+   - Look for style keywords: modern, professional, creative, minimal, portfolio, showcase
+   - Determine if it's for a single project or multiple projects
+   - Identify any specific design preferences
+
+2. **Aspect Ratio Preferences:**
+   - Look for ratio specifications: 16:9, 4:3, 1:1, 3:2
+   - Identify landscape/portrait preferences
+   - Look for device-specific mentions
+
+3. **Quality Preferences:**
+   - Look for quality indicators: high, medium, low, HD, premium, fast
+   - Identify performance vs quality trade-offs
+
+4. **Device Preferences:**
+   - Look for mobile, tablet, desktop mentions
+   - Identify responsive design requirements
+
+5. **Custom Content:**
+   - Extract titles from natural language (e.g., "Title - My Website" → "My Website")
+   - Extract descriptions from natural language (e.g., "Description - A portfolio site" → "A portfolio site")
+   - Identify project names, titles, or website names from context
+   - Look for patterns like "Title:", "Name:", "Project:", "Website:", etc.
+   - Understand variations like "with Title", "titled", "called", etc.
+
+6. **URLs:**
+   - Extract all valid URLs
+   - Categorize URLs by type (portfolio, social, project, etc.)
+
+**Return a JSON object with this structure:**
+{
+  "style": "portfolio-multi|portfolio-single|professional|creative|minimal",
+  "aspectRatio": "16:9|4:3|1:1|3:2",
+  "quality": "high|medium|low",
+  "includeMobile": boolean,
+  "includeTablet": boolean,
+  "customTitle": "string or null",
+  "customDescription": "string or null",
+  "urls": ["array of URLs"],
+  "confidence": {
+    "style": 0-100,
+    "aspectRatio": 0-100,
+    "quality": 0-100,
+    "title": 0-100,
+    "description": 0-100
+  }
+}
+
+**Confidence Scoring:**
+- 90-100: Explicitly stated with clear keywords or exact patterns
+- 70-89: Strongly implied with multiple related keywords or clear context
+- 50-69: Moderately implied with some keywords or reasonable inference
+- 30-49: Weakly implied with few keywords or uncertain context
+- 0-29: No clear indication, use defaults
+
+**Title/Description Extraction Examples:**
+- "Modern with Title - My First Website" → title: "My First Website", style: "creative"
+- "Title: Portfolio Site" → title: "Portfolio Site"
+- "My project called Awesome App" → title: "Awesome App"
+- "Website named Tech Blog" → title: "Tech Blog"
+- "Description - A modern portfolio" → description: "A modern portfolio"
+
+Return ONLY the JSON object, no additional text.`
+
+// URL analysis prompt for extracting website information
+export const URL_ANALYSIS_PROMPT = `Analyze the following URLs and extract information about the websites they represent.
+
+**URLs to Analyze:**
+{urls}
+
+**For each URL, extract:**
+1. Website type/category (portfolio, social media, business, etc.)
+2. Likely content and purpose
+3. Target audience
+4. Technology stack indicators
+5. Design style indicators
+
+**Overall Analysis:**
+1. **Suggested Style:** Based on the types of websites
+2. **Suggested Title:** Generate an appropriate title for the collection
+3. **Suggested Description:** Generate a description that captures the essence
+4. **Suggested Aspect Ratio:** Based on content type
+5. **Device Recommendations:** Based on website types
+
+**Return a JSON object:**
+{
+  "suggestedStyle": "portfolio-multi|portfolio-single|professional|creative|minimal",
+  "suggestedTitle": "string",
+  "suggestedDescription": "string",
+  "suggestedAspectRatio": "16:9|4:3|1:1|3:2",
+  "includeMobile": boolean,
+  "includeTablet": boolean,
+  "confidence": {
+    "style": 0-100,
+    "title": 0-100,
+    "description": 0-100,
+    "aspectRatio": 0-100
+  },
+  "urlAnalysis": [
+    {
+      "url": "string",
+      "type": "string",
+      "category": "string",
+      "purpose": "string"
+    }
+  ]
+}
+
+Return ONLY the JSON object, no additional text.`
+
+// Image analysis prompt for extracting content from screenshots
+export const IMAGE_ANALYSIS_PROMPT = `Analyze the following website screenshot(s) and extract key information.
+
+**Image Content:**
+{imageDescription}
+
+**Extract the following information:**
+
+1. **Website Type:** What type of website is this? (portfolio, e-commerce, blog, business, etc.)
+2. **Content Analysis:** What is the main content/purpose?
+3. **Design Style:** What design style is being used? (modern, professional, creative, minimal)
+4. **Technology Indicators:** What technologies might be used? (React, WordPress, etc.)
+5. **Target Audience:** Who is this website for?
+6. **Key Features:** What are the main features visible?
+
+**Generate:**
+1. **Suggested Title:** Based on the website content
+2. **Suggested Description:** Comprehensive description of the website
+3. **Suggested Style:** Appropriate portfolio style for showcasing this
+4. **Suggested Aspect Ratio:** Based on the layout and content
+
+**Return a JSON object:**
+{
+  "websiteType": "string",
+  "contentAnalysis": "string",
+  "designStyle": "string",
+  "technologyIndicators": ["array"],
+  "targetAudience": "string",
+  "keyFeatures": ["array"],
+  "suggestedTitle": "string",
+  "suggestedDescription": "string",
+  "suggestedStyle": "portfolio-multi|portfolio-single|professional|creative|minimal",
+  "suggestedAspectRatio": "16:9|4:3|1:1|3:2",
+  "confidence": {
+    "title": 0-100,
+    "description": 0-100,
+    "style": 0-100,
+    "aspectRatio": 0-100
+  }
+}
+
+Return ONLY the JSON object, no additional text.`
+
+// Description generation prompt
+export const DESCRIPTION_GENERATION_PROMPT = `Generate a compelling description for a portfolio snapshot based on the following information.
+
+**Title:** {title}
+**URLs:** {urls}
+**Context:** {context}
+**Style:** {style}
+
+**Requirements:**
+1. **Length:** 50-200 characters for concise, 200-500 characters for detailed
+2. **Tone:** Professional but engaging
+3. **Content:** Highlight key features, technologies, or achievements
+4. **Style Match:** Match the tone to the specified style
+5. **SEO Friendly:** Include relevant keywords naturally
+
+**Style Guidelines:**
+- **Professional:** Focus on achievements, technologies, business value
+- **Creative:** Emphasize design, innovation, artistic elements
+- **Portfolio:** Highlight projects, skills, experience
+- **Minimal:** Keep it simple and clean
+
+**Return a JSON object:**
+{
+  "description": "string",
+  "confidence": 0-100,
+  "length": "concise|detailed"
+}
+
+Return ONLY the JSON object, no additional text.` 

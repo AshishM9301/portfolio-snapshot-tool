@@ -7,6 +7,11 @@ import { generateAIPortfolioHTML } from '@/lib/ai-html-generator';
 import { convertHTMLToPNG } from '@/lib/html-to-png';
 import puppeteer from 'puppeteer';
 import type { Browser } from 'puppeteer';
+import packageJson from '../../../package.json';
+
+if (!env.REDIS_URL) {
+    throw new Error('REDIS_URL environment variable is required');
+}
 
 const connection = new IORedis(env.REDIS_URL ?? 'redis://localhost:6379', {
     maxRetriesPerRequest: null,
@@ -14,6 +19,15 @@ const connection = new IORedis(env.REDIS_URL ?? 'redis://localhost:6379', {
 const prisma = new PrismaClient();
 
 const queueName = 'ai-snapshot-queue';
+const workerId = process.env.WORKER_ID ?? 'unknown';
+
+// Log worker startup with version info
+console.log(`🤖 AI Snapshot Worker v${packageJson.version} (ID: ${workerId}) starting...`);
+console.log(`📦 Package: ${packageJson.name}`);
+console.log(`🕐 Build time: ${new Date().toISOString()}`);
+console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🔗 Redis URL: ${env.REDIS_URL ?? 'redis://localhost:6379'}`);
+console.log(`📋 Queue: ${queueName}`);
 
 // Browser pool for concurrent processing
 // eslint-disable-next-line prefer-const
@@ -68,24 +82,46 @@ async function processImageSnapshot(
     stylePreferences?: string
 ): Promise<void> {
     try {
+        console.log(`🖼️ Worker ${workerId} starting image processing for job ${jobId}...`);
+
         // Check if job exists in database before processing
         const existingJob = await prisma.job.findUnique({
             where: { id: jobId }
         });
 
         if (!existingJob) {
-            console.log(`Job ${jobId} not found in database, skipping...`);
+            console.log(`⚠️ Job ${jobId} not found in database, skipping...`);
             return;
         }
 
+        console.log(`📝 Updating job ${jobId} status to 'processing'...`);
         await prisma.job.update({ where: { id: jobId }, data: { status: 'processing' } });
+
+        // Parse style preferences to extract title and description
+        let customTitle = `Portfolio from ${imageName}`
+        let customDescription = 'AI-generated portfolio from uploaded image'
+
+        if (stylePreferences) {
+            const titleMatch = /Title:\s*([^|]+)/i.exec(stylePreferences)
+            if (titleMatch?.[1]) {
+                customTitle = titleMatch[1].trim()
+            }
+
+            const descMatch = /Description:\s*([^|]+)/i.exec(stylePreferences)
+            if (descMatch?.[1]) {
+                customDescription = descMatch[1].trim()
+            }
+        }
+
+        console.log('Parsed custom title:', customTitle)
+        console.log('Parsed custom description:', customDescription)
 
         // Create a mock website analysis from the image
         const mockAnalysis = {
             websiteData: {
                 url: `image://${imageName}`,
-                title: `Portfolio from ${imageName}`,
-                description: 'AI-generated portfolio from uploaded image',
+                title: customTitle,
+                description: customDescription,
                 keywords: ['portfolio', 'design', 'creative'],
                 content: 'Portfolio content generated from image analysis',
                 purpose: 'portfolio',
@@ -110,11 +146,11 @@ async function processImageSnapshot(
         const htmlContent = await generateAIPortfolioHTML(
             mockAnalysis,
             { desktop: imageData },
-            { 
-                style: stylePreferences?.includes('professional') ? 'professional' : 
-                       stylePreferences?.includes('creative') ? 'creative' : 
-                       stylePreferences?.includes('minimal') ? 'minimal' : 'modern',
-                quality: 'high' 
+            {
+                style: stylePreferences?.includes('professional') ? 'professional' :
+                    stylePreferences?.includes('creative') ? 'creative' :
+                        stylePreferences?.includes('minimal') ? 'minimal' : 'modern',
+                quality: 'high'
             }
         );
 
@@ -139,14 +175,26 @@ async function processImageSnapshot(
 const worker = new Worker(
     queueName,
     async (job) => {
-        const { jobId, url, imageData, imageName, imageType, stylePreferences } = job.data as { 
-            jobId: string; 
-            url?: string; 
+        const { jobId, url, imageData, imageName, imageType, stylePreferences } = job.data as {
+            jobId: string;
+            url?: string;
             imageData?: string;
             imageName?: string;
             imageType?: string;
             stylePreferences?: string;
         };
+
+        console.log(`🔄 Worker ${workerId} processing job ${jobId}...`);
+        console.log(`📋 Job type: ${imageData ? 'Image' : 'URL'}`);
+        if (imageData) {
+            console.log(`🖼️ Image: ${imageName} (${imageType})`);
+        }
+        if (url) {
+            console.log(`🌐 URL: ${url}`);
+        }
+        if (stylePreferences) {
+            console.log(`🎨 Style preferences: ${stylePreferences}`);
+        }
 
         // Route to appropriate processing function based on job type
         if (imageData && imageName && imageType) {
@@ -208,10 +256,10 @@ const worker = new Worker(
 );
 
 worker.on('completed', (job) => {
-    console.log(`Job ${job.id} completed`);
+    console.log(`✅ Worker ${workerId} completed job ${job.id}`);
 });
 worker.on('failed', (job, err) => {
-    console.error(`Job ${job?.id} failed:`, err);
+    console.error(`❌ Worker ${workerId} failed job ${job?.id}:`, err);
 });
 
 // Graceful shutdown
@@ -235,4 +283,4 @@ process.on('SIGINT', () => {
     process.exit(0);
 });
 
-console.log('AI Snapshot Worker started with concurrency: 3. Waiting for jobs...'); 
+console.log(`✅ AI Snapshot Worker v${packageJson.version} (ID: ${workerId}) started with concurrency: 3. Waiting for jobs...`); 

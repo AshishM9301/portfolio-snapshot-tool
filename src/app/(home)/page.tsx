@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ImagePreviewDialog } from '@/components/ui/image-preview-dialog'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { UrlChip } from '@/components/ui/url-chip'
 import { useSnapshotStore } from '@/lib/stores/snapshot-store'
 import { extractUrlsFromText, validateUrl, type UrlValidationResult } from '@/lib/utils'
 import { analyzeTextInput, validateTextAnalysis, mergeWithDefaults, getDefaultPreferences, type TextAnalysisResult } from '@/lib/text-analyzer'
+import { getPrioritizedTitleAndDescription } from '@/lib/priority-manager'
 import { api } from '@/trpc/react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -16,14 +18,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { FaCamera, FaLink, FaMagic } from 'react-icons/fa'
 import { IoFilterOutline } from 'react-icons/io5'
 import { AISnapshotTester } from '../_components/ai-snapshot-tester'
-import { ManualFormDialog } from '../_components/manual-form-dialog'
+
 
 const HomePage = () => {
   const router = useRouter()
   const snapshotStore = useSnapshotStore()
   const { setSnapshots, setCurrentUrl, setIsGenerating, isGenerating } = snapshotStore
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
-  const [manualFormDialogOpen, setManualFormDialogOpen] = useState(false)
+
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [projectDetails, setProjectDetails] = useState<{ title: string; description: string } | null>(null)
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false)
@@ -45,7 +47,7 @@ const HomePage = () => {
     if (urlInput.trim()) {
       // Analyze text input for URLs and styling preferences
       const analysis = analyzeTextInput(urlInput)
-      const validation = validateTextAnalysis(analysis)
+      const validation = validateTextAnalysis(analysis, selectedImages.length > 0)
       const finalAnalysis = mergeWithDefaults(validation.cleanedResult)
 
       setTextAnalysis(finalAnalysis)
@@ -142,10 +144,7 @@ const HomePage = () => {
     }
   }
 
-  const handleManualFormSubmit = (data: { title: string; description: string }) => {
-    setProjectDetails(data)
-    console.log('Manual form submitted:', data)
-  }
+
 
   const removeProjectDetails = () => {
     setProjectDetails(null)
@@ -177,6 +176,7 @@ const HomePage = () => {
     console.log('Current text analysis:', textAnalysis)
     console.log('Current URL results:', urlResults)
     console.log('Has validated:', hasValidated)
+    console.log('Selected images:', selectedImages.length)
 
     // Check for analysis errors first
     if (analysisErrors.length > 0) {
@@ -185,9 +185,89 @@ const HomePage = () => {
       return
     }
 
-    // If no URLs are detected, try to extract them first
-    if (urlResults.length === 0 && urlInput.trim()) {
-      console.log('No URLs detected, extracting from input...')
+    // Get prioritized title and description
+    const priorityResult = getPrioritizedTitleAndDescription({
+      textInput: urlInput,
+      textAnalysis,
+      uploadedImages: selectedImages,
+      manualPreferences: projectDetails ?? undefined
+    })
+
+    console.log('Priority result:', priorityResult)
+
+    // Scenario 1 & 2: Images only or Images + Text
+    if (selectedImages.length > 0) {
+      console.log('Processing images...')
+      setCurrentUrl('Image Portfolio') // Set display name
+      setIsGenerating(true)
+
+      try {
+        // Convert images to base64
+        const imageData = await Promise.all(
+          selectedImages.map(async (image) => {
+            const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader()
+              reader.onload = () => {
+                const result = reader.result as string
+                resolve(result.split(',')[1] ?? '') // Remove data:image/...;base64, prefix
+              }
+              reader.readAsDataURL(image)
+            })
+
+            return {
+              id: crypto.randomUUID(),
+              name: image.name,
+              data: base64,
+              type: image.type
+            }
+          })
+        )
+
+        // Prepare style preferences from text analysis
+        const stylePreferences = textAnalysis ?
+          `${textAnalysis.style ? `Style: ${textAnalysis.style}` : ''} ${textAnalysis.aspectRatio ? `Aspect Ratio: ${textAnalysis.aspectRatio}` : ''} ${textAnalysis.quality ? `Quality: ${textAnalysis.quality}` : ''}`.trim() :
+          ''
+
+        // Add title and description from priority system
+        const enhancedStylePreferences = [
+          stylePreferences,
+          priorityResult.title ? `Title: ${priorityResult.title}` : '',
+          priorityResult.description ? `Description: ${priorityResult.description}` : ''
+        ].filter(Boolean).join(' | ')
+
+        console.log('Enhanced style preferences:', enhancedStylePreferences)
+        console.log('Priority result being sent:', priorityResult)
+
+        const res = await fetch('/api/batch-image-snapshots', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            images: imageData,
+            stylePreferences: enhancedStylePreferences || undefined
+          }),
+        })
+
+        const data = await res.json() as { error?: string; jobIds?: string[] }
+        if (!res.ok) throw new Error(data.error ?? 'Failed to start image batch')
+
+        // Navigate to snapshots page with job IDs
+        if (data.jobIds && data.jobIds.length > 0) {
+          const jobIdsParam = data.jobIds.join(',')
+          router.push(`/snapshots?jobs=${jobIdsParam}`)
+        } else {
+          router.push('/snapshots')
+        }
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        console.error('Failed to start image batch job:', errorMessage)
+        setIsGenerating(false)
+      }
+      return
+    }
+
+    // Scenario 3 & 4: URLs only or URLs + Text
+    if (urlInput.trim()) {
+      // Extract and validate URLs
       const extractedUrls = extractUrlsFromText(urlInput)
       console.log('Extracted URLs:', extractedUrls)
 
@@ -197,133 +277,64 @@ const HomePage = () => {
         return
       }
 
-      // Set initial results for validation
-      const initialResults = extractedUrls.map(url => ({
-        url,
-        isValid: false,
-        isAccessible: false,
-        isLoading: true
-      }))
-      setUrlResults(initialResults)
-    }
+      // Validate URLs
+      setIsValidating(true)
+      const validationPromises = extractedUrls.map(async (url: string) => {
+        const result = await validateUrl(url)
+        return { ...result, isLoading: false }
+      })
 
-    // If we haven't validated yet, validate first
-    if (!hasValidated && urlResults.length > 0) {
-      console.log('Validating URLs before generation...')
-      const validationSuccess = await validateUrls()
+      try {
+        const validatedResults = await Promise.all(validationPromises)
+        console.log('Validation results:', validatedResults)
 
-      if (!validationSuccess) {
-        console.log('URL validation failed, cannot generate snapshots')
-        return
-      }
-    }
+        const validUrls = validatedResults
+          .filter(result => result.isValid && result.isAccessible)
+          .map(result => result.url)
 
-    // Get valid URLs (must be both valid and accessible)
-    console.log('Current urlResults state:', urlResults)
-    const validUrls = urlResults
-      .filter(result => result.isValid && result.isAccessible)
-      .map(result => result.url)
+        console.log('Valid URLs found:', validUrls)
 
-    console.log('Valid URLs found:', validUrls)
-
-    // If no valid URLs found in state, try to extract and validate again
-    if (validUrls.length === 0 && urlInput.trim()) {
-      console.log('No valid URLs in state, extracting and validating again...')
-      const extractedUrls = extractUrlsFromText(urlInput)
-
-      if (extractedUrls.length > 0) {
-        // Validate the extracted URLs
-        const validationPromises = extractedUrls.map(async (url: string) => {
-          const result = await validateUrl(url)
-          return { ...result, isLoading: false }
-        })
-
-        try {
-          const validatedResults = await Promise.all(validationPromises)
-          console.log('Re-validated results:', validatedResults)
-
-          const reValidatedUrls = validatedResults
-            .filter(result => result.isValid && result.isAccessible)
-            .map(result => result.url)
-
-          console.log('Re-validated URLs:', reValidatedUrls)
-
-          if (reValidatedUrls.length > 0) {
-            console.log('Using re-validated URLs:', reValidatedUrls)
-
-            setCurrentUrl(reValidatedUrls[0]!) // Set first URL as current for display purposes
-            setIsGenerating(true)
-
-            // Use text analysis preferences or defaults
-            const preferences = textAnalysis ?? getDefaultPreferences(reValidatedUrls)
-
-            // Use batch job system for better image quality and progress tracking
-            try {
-              const res = await fetch('/api/batch-snapshots', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ urls: reValidatedUrls }),
-              })
-              const data = await res.json() as { error?: string; jobIds?: string[] }
-              if (!res.ok) throw new Error(data.error ?? 'Failed to start batch')
-
-              // Navigate to snapshots page with job IDs
-              if (data.jobIds && data.jobIds.length > 0) {
-                const jobIdsParam = data.jobIds.join(',')
-                router.push(`/snapshots?jobs=${jobIdsParam}`)
-              } else {
-                router.push('/snapshots')
-              }
-            } catch (err: unknown) {
-              const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-              console.error('Failed to start batch job:', errorMessage)
-              setIsGenerating(false)
-            }
-            return
-          }
-        } catch (error) {
-          console.error('Re-validation error:', error)
+        if (validUrls.length === 0) {
+          console.error('No valid URLs to generate snapshots for')
+          alert('Please fix the invalid URLs before generating snapshots.')
+          setIsValidating(false)
+          return
         }
-      }
-    }
 
-    if (validUrls.length === 0) {
-      console.error('No valid URLs to generate snapshots for')
-      alert('Please fix the invalid URLs before generating snapshots.')
+        setCurrentUrl(validUrls[0]!) // Set first URL as current for display purposes
+        setIsGenerating(true)
+
+        // Use batch job system for URLs
+        try {
+          const res = await fetch('/api/batch-snapshots', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ urls: validUrls }),
+          })
+          const data = await res.json() as { error?: string; jobIds?: string[] }
+          if (!res.ok) throw new Error(data.error ?? 'Failed to start batch')
+
+          // Navigate to snapshots page with job IDs
+          if (data.jobIds && data.jobIds.length > 0) {
+            const jobIdsParam = data.jobIds.join(',')
+            router.push(`/snapshots?jobs=${jobIdsParam}`)
+          } else {
+            router.push('/snapshots')
+          }
+        } catch (err: unknown) {
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          console.error('Failed to start batch job:', errorMessage)
+          setIsGenerating(false)
+        }
+      } catch (error) {
+        console.error('URL validation error:', error)
+        setIsValidating(false)
+      }
       return
     }
 
-    // Generate snapshots for ALL valid URLs
-    console.log('Generating snapshots for URLs:', validUrls)
-
-    setCurrentUrl(validUrls[0]!) // Set first URL as current for display purposes
-    setIsGenerating(true)
-
-    // Use text analysis preferences or defaults
-    const preferences = textAnalysis ?? getDefaultPreferences(validUrls)
-
-    // Use batch job system for better image quality and progress tracking
-    try {
-      const res = await fetch('/api/batch-snapshots', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ urls: validUrls }),
-      })
-      const data = await res.json() as { error?: string; jobIds?: string[] }
-      if (!res.ok) throw new Error(data.error ?? 'Failed to start batch')
-
-      // Navigate to snapshots page with job IDs
-      if (data.jobIds && data.jobIds.length > 0) {
-        const jobIdsParam = data.jobIds.join(',')
-        router.push(`/snapshots?jobs=${jobIdsParam}`)
-      } else {
-        router.push('/snapshots')
-      }
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      console.error('Failed to start batch job:', errorMessage)
-      setIsGenerating(false)
-    }
+    // No input provided
+    alert('Please provide either images or URLs to generate snapshots.')
   }
 
   return (
@@ -431,14 +442,14 @@ const HomePage = () => {
             {/* URL Input and Validation */}
             <div className='flex items-center gap-4'>
               <div className="relative flex-1">
-                <Input
-                  type="text"
+                <Textarea
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
-                  placeholder={selectedImages.length > 0 ? "Images attached - Enter portfolio URLs..." : "Enter URLs and preferences (e.g., 'Create professional portfolio for google.com with 16:9 aspect ratio')..."}
-                  className="w-full h-12 pl-4 pr-12 text-lg border-gray-200 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={selectedImages.length > 0 ? "Images attached - Enter portfolio URLs and preferences..." : "Enter URLs and preferences (e.g., 'Create professional portfolio for google.com with 16:9 aspect ratio, Title'My Portfolio', Description'This is my work')..."}
+                  className="w-full min-h-[48px] max-h-[120px] pl-4 pr-12 text-lg border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  maxLength={400}
                 />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
+                <div className="absolute right-3 top-3 flex items-center space-x-2">
                   {isValidating && (
                     <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
                   )}
@@ -447,8 +458,11 @@ const HomePage = () => {
                     onClick={() => setUploadDialogOpen(true)}
                   />
                 </div>
+                <div className="absolute bottom-2 right-3 text-xs text-gray-400">
+                  {urlInput.length}/400
+                </div>
               </div>
-              <IoFilterOutline onClick={() => setManualFormDialogOpen(true)} className="w-8 h-8 text-gray-400 cursor-pointer hover:text-gray-600" />
+              <IoFilterOutline className="w-8 h-8 text-gray-400 cursor-pointer hover:text-gray-600" />
             </div>
 
             {/* URL Validation Results */}
@@ -588,7 +602,7 @@ const HomePage = () => {
           <div className="flex justify-center">
             <Button
               onClick={handleGenerateSnapshot}
-              disabled={((isValidating ?? false) ?? false) || ((isGenerating ?? false) ?? false) || !urlInput.trim() || (hasValidated && !areAllUrlsValid)}
+              disabled={((isValidating ?? false) ?? false) || ((isGenerating ?? false) ?? false) || (!urlInput.trim() && selectedImages.length === 0)}
               className="w-full max-w-md h-14 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isGenerating ? (
@@ -599,7 +613,7 @@ const HomePage = () => {
               ) : (
                 <>
                   <FaMagic className="w-5 h-5 mr-2" />
-                  {isValidating ? 'Validating URLs...' : 'Validate & Generate AI Snapshot'}
+                  {isValidating ? 'Validating URLs...' : selectedImages.length > 0 ? 'Generate AI Image Snapshot' : 'Validate & Generate AI Snapshot'}
                 </>
               )}
             </Button>
@@ -616,12 +630,7 @@ const HomePage = () => {
         maxSize={50} // 50MB total limit
       />
 
-      {/* Manual Form Dialog */}
-      <ManualFormDialog
-        open={manualFormDialogOpen}
-        onOpenChange={setManualFormDialogOpen}
-        onSubmit={handleManualFormSubmit}
-      />
+
 
       {/* Image Preview Dialog */}
       <ImagePreviewDialog

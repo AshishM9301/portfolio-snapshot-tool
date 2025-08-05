@@ -2,13 +2,12 @@
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { useState, useCallback, useRef } from 'react'
-import { JobStatus } from './job-status'
 import type { BatchImageSnapshotResponse } from '@/types'
+import { FileImage, Upload, X } from 'lucide-react'
 import Image from 'next/image'
-import { Upload, X, Copy, FileImage } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
+import { JobStatus } from './job-status'
 
 interface ImageFile {
     id: string
