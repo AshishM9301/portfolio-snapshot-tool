@@ -44,7 +44,7 @@ export function AISnapshotTester() {
 
     // Image upload handler
     const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(event.target.files || [])
+        const files = Array.from(event.target.files ?? [])
         setImages(files)
     }
 
@@ -57,22 +57,22 @@ export function AISnapshotTester() {
 
         setIsAnalyzing(true)
         setErrors([])
-        
+
         try {
             const response = await fetch('/api/analyze-text', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     text: textInput,
                     urls: urls.filter(url => url.trim()),
                     hasImages: images.length > 0
                 }),
             })
-            
+
             if (!response.ok) {
                 throw new Error('Failed to analyze text')
             }
-            
+
             const result = await response.json() as TextAnalysisResult
             setAnalysisResult(result)
         } catch (err: unknown) {
@@ -120,7 +120,7 @@ export function AISnapshotTester() {
                 <h1 className="text-3xl font-bold mb-2">AI Portfolio Snapshot Tester</h1>
                 <p className="text-muted-foreground">Test the new AI-driven portfolio card generation system with intelligent text analysis</p>
             </div>
-            
+
             <Card className="p-6">
                 <h2 className="text-xl font-semibold mb-4">AI Text Analysis</h2>
                 <div className="space-y-4">

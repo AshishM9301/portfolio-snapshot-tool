@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { analyzeTextInputEnhanced } from '@/lib/text-analyzer'
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json() as { text: string, urls: string[], hasImages: boolean }
     const { text, urls, hasImages } = body
 
     // Validate input
