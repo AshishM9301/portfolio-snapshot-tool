@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         })
 
         // Return PNG as response
-        return new NextResponse(result.buffer, {
+        return new NextResponse(result.buffer.buffer, {
             headers: {
                 'Content-Type': `image/${format}`,
                 'Content-Length': result.buffer.length.toString(),
