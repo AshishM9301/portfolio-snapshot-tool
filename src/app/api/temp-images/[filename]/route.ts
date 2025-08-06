@@ -55,7 +55,7 @@ export async function GET(
                 contentType = 'image/png'
         }
 
-        return new NextResponse(fileBuffer, {
+        return new NextResponse(new Uint8Array(fileBuffer), {
             headers: {
                 'Content-Type': contentType,
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
