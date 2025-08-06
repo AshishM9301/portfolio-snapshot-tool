@@ -49,3 +49,7 @@ yarn-error.log*
 
 # Temp files
 /temp/*
+
+# Bun lock files
+bun.lockb
+bun.lock
