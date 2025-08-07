@@ -24,6 +24,10 @@ RUN apt-get update -y && apt-get install -y \
     libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y chromium \
+    && rm -rf /var/lib/apt/lists/*
+ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium-browser"
+
 WORKDIR /app
 
 # Copy package files and Prisma schema first for better caching
