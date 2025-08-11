@@ -1,6 +1,10 @@
 # App-Only Dockerfile - Optimized for production with limited resources
 FROM oven/bun:latest
 
+# Accept build arguments
+ARG SKIP_ENV_VALIDATION=false
+ARG NODE_ENV=production
+
 # Install minimal system dependencies (no Puppeteer needed for app)
 RUN apt-get update -y && apt-get install -y \
     openssl \
@@ -19,7 +23,10 @@ COPY . .
 # Generate Prisma client
 RUN bun run prisma generate
 
-# Build the Next.js app
+# Build the Next.js app with environment validation skipped
+# Environment variables will be validated at runtime instead
+ENV SKIP_ENV_VALIDATION=${SKIP_ENV_VALIDATION}
+ENV NODE_ENV=${NODE_ENV}
 RUN bun run build
 
 # Create temp directory for shared images

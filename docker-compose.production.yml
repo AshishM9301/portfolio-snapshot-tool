@@ -4,6 +4,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.app
+      args:
+        - SKIP_ENV_VALIDATION=true
+        - NODE_ENV=production
     ports:
       - "3000:3000"
     env_file:
@@ -38,6 +41,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker-only
+      args:
+        - SKIP_ENV_VALIDATION=true
+        - NODE_ENV=production
     env_file:
       - .env
     environment:
@@ -66,6 +72,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker-only
+      args:
+        - SKIP_ENV_VALIDATION=true
+        - NODE_ENV=production
     command: bun run src/server/worker/cleanup-old-jobs.ts
     env_file:
       - .env
