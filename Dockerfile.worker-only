@@ -28,10 +28,10 @@ RUN apt-get update -y && apt-get install -y \
     libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Chromium with minimal dependencies
-RUN apt-get update && apt-get install -y chromium \
-    && rm -rf /var/lib/apt/lists/*
-ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
+# # Install Chromium with minimal dependencies
+# RUN apt-get update && apt-get install -y chromium \
+#     && rm -rf /var/lib/apt/lists/*
+# ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
 
 # Set Puppeteer to use minimal resources
 ENV PUPPETEER_ARGS="--no-sandbox,--disable-dev-shm-usage,--disable-gpu,--single-process,--disable-extensions,--disable-plugins,--disable-background-timer-throttling,--disable-backgrounding-occluded-windows,--disable-renderer-backgrounding"
