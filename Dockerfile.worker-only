@@ -1,7 +1,7 @@
-# Worker-Only Dockerfile - Includes full Next.js app but optimized for worker usage
+# Worker-Only Dockerfile - Optimized for limited CPU resources
 FROM oven/bun:latest
 
-# Install system dependencies for Puppeteer
+# Install minimal system dependencies for Puppeteer
 RUN apt-get update -y && apt-get install -y \
     openssl \
     libglib2.0-0 \
@@ -24,9 +24,13 @@ RUN apt-get update -y && apt-get install -y \
     libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Chromium with minimal dependencies
 RUN apt-get update && apt-get install -y chromium \
     && rm -rf /var/lib/apt/lists/*
 ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium-browser"
+
+# Set Puppeteer to use minimal resources
+ENV PUPPETEER_ARGS="--no-sandbox,--disable-dev-shm-usage,--disable-gpu,--single-process,--disable-extensions,--disable-plugins,--disable-background-timer-throttling,--disable-backgrounding-occluded-windows,--disable-renderer-backgrounding"
 
 WORKDIR /app
 
@@ -51,5 +55,5 @@ RUN mkdir -p /app/temp/images
 ENV NODE_ENV=production
 ENV WORKER_MODE=true
 
-# Use the worker manager to spawn multiple workers
+# Use the worker manager to spawn a single worker for limited CPU
 CMD ["bun", "src/server/worker/worker-manager.ts"] 

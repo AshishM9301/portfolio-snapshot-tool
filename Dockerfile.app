@@ -1,27 +1,9 @@
-# App-Only Dockerfile - Optimized for Next.js production
+# App-Only Dockerfile - Optimized for production with limited resources
 FROM oven/bun:latest
 
-# Install system dependencies for Puppeteer (if needed)
+# Install minimal system dependencies (no Puppeteer needed for app)
 RUN apt-get update -y && apt-get install -y \
     openssl \
-    libglib2.0-0 \
-    libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libxkbcommon0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libasound2 \
-    libpango-1.0-0 \
-    libcairo2 \
-    libatspi2.0-0 \
-    libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

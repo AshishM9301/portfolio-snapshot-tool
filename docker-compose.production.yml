@@ -9,14 +9,22 @@ services:
     env_file:
       - .env
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - NEXT_PUBLIC_APP_URL=http://app:3000
       - REDIS_URL=${REDIS_URL}
       - HOSTNAME=0.0.0.0
     volumes:
       - temp_images:/app/temp/images
     restart: unless-stopped
-    command: ["bun", "run", "dev"]
+    command: ["bun", "run", "start"]
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
 
   # External Redis - no local Redis needed
   # redis:
@@ -25,7 +33,7 @@ services:
   #     - "6379:6379"
   #   restart: unless-stopped
 
-  # BullMQ worker (Backend only, no external ports)
+  # BullMQ worker (Backend only, no external ports) - Reduced to 1 worker for limited CPU
   worker:
     build:
       context: .
@@ -34,17 +42,26 @@ services:
       - .env
     environment:
       - REDIS_URL=${REDIS_URL}
-      - NUM_WORKERS=3
+      - NUM_WORKERS=1
       - NODE_ENV=production
       - WORKER_MODE=true
       - NEXT_PUBLIC_APP_URL=http://app:3000
+      - PUPPETEER_ARGS=--no-sandbox,--disable-dev-shm-usage,--disable-gpu,--single-process
     volumes:
       - temp_images:/app/temp/images
     # depends_on:
     #   - redis
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1.5G
+        reservations:
+          cpus: '0.3'
+          memory: 0.8G
 
-  # Cleanup service
+  # Cleanup service - Runs less frequently to save resources
   cleanup:
     build:
       context: .
@@ -61,6 +78,14 @@ services:
     # depends_on:
     #   - redis
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 0.5G
+        reservations:
+          cpus: '0.1'
+          memory: 0.2G
 
 # Define shared volumes
 volumes:
