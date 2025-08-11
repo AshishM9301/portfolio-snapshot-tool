@@ -18,6 +18,8 @@ services:
       - HOSTNAME=0.0.0.0
     volumes:
       - temp_images:/app/temp/images
+    networks:
+      - app-network
     restart: unless-stopped
     command: ["bun", "run", "start"]
     deploy:
@@ -52,11 +54,14 @@ services:
       - NODE_ENV=production
       - WORKER_MODE=true
       - NEXT_PUBLIC_APP_URL=http://app:3000
+      - APP_INTERNAL_URL=http://app:3000
       - PUPPETEER_ARGS=--no-sandbox,--disable-dev-shm-usage,--disable-gpu,--single-process
     volumes:
       - temp_images:/app/temp/images
-    # depends_on:
-    #   - redis
+    networks:
+      - app-network
+    depends_on:
+      - app
     restart: unless-stopped
     deploy:
       resources:
@@ -84,8 +89,10 @@ services:
       - REDIS_URL=${REDIS_URL}
     volumes:
       - temp_images:/app/temp/images
-    # depends_on:
-    #   - redis
+    networks:
+      - app-network
+    depends_on:
+      - app
     restart: unless-stopped
     deploy:
       resources:
@@ -98,4 +105,12 @@ services:
 
 # Define shared volumes
 volumes:
-  temp_images: 
+  temp_images:
+
+# Define custom network for service communication
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 
