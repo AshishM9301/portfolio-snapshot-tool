@@ -16,6 +16,10 @@ export interface ImageJobData {
 export interface BatchImageSnapshotRequest {
     images: ImageJobData[]
     stylePreferences?: string
+    manualPreferences?: {
+        title?: string
+        description?: string
+    }
 }
 
 export interface BatchImageSnapshotResponse {

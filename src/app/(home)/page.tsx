@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { FaCamera, FaLink, FaMagic } from 'react-icons/fa'
 import { IoFilterOutline } from 'react-icons/io5'
 import { AISnapshotTester } from '../_components/ai-snapshot-tester'
+import { ManualFormDialog } from '../_components/manual-form-dialog'
 
 
 const HomePage = () => {
@@ -25,6 +26,7 @@ const HomePage = () => {
   const snapshotStore = useSnapshotStore()
   const { setSnapshots, setCurrentUrl, setIsGenerating, isGenerating } = snapshotStore
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
+  const [manualDialogOpen, setManualDialogOpen] = useState(false)
 
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [projectDetails, setProjectDetails] = useState<{ title: string; description: string } | null>(null)
@@ -243,7 +245,8 @@ const HomePage = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             images: imageData,
-            stylePreferences: enhancedStylePreferences || undefined
+            stylePreferences: enhancedStylePreferences || undefined,
+            manualPreferences: projectDetails ?? undefined
           }),
         })
 
@@ -462,7 +465,7 @@ const HomePage = () => {
                   {urlInput.length}/400
                 </div>
               </div>
-              <IoFilterOutline className="w-8 h-8 text-gray-400 cursor-pointer hover:text-gray-600" />
+              <IoFilterOutline className="w-8 h-8 text-gray-400 cursor-pointer hover:text-gray-600" onClick={() => setManualDialogOpen(true)} />
             </div>
 
             {/* URL Validation Results */}
@@ -646,7 +649,12 @@ const HomePage = () => {
         onIndexChange={setSelectedImageIndex}
       />
 
-
+      {/* Manual Dialog */}
+      <ManualFormDialog
+        open={manualDialogOpen}
+        onOpenChange={setManualDialogOpen}
+        onSubmit={setProjectDetails}
+      />
 
     </div>
   )

@@ -23,20 +23,20 @@ export interface PriorityInputs {
 export function getPrioritizedTitleAndDescription(inputs: PriorityInputs): PriorityResult {
     const { textInput, textAnalysis, uploadedImages, manualPreferences } = inputs
 
-    // 1. Check for custom title/description in text input (highest priority)
-    if (textAnalysis?.customTitle || textAnalysis?.customDescription) {
-        return {
-            title: textAnalysis.customTitle ?? 'Portfolio Snapshot',
-            description: textAnalysis.customDescription ?? 'Professional portfolio snapshot',
-            source: 'text-input'
-        }
-    }
-
-    // 2. Check for manual preferences (from future manual form dialog)
+    // 1. Check for manual preferences (from future manual form dialog)
     if (manualPreferences?.title || manualPreferences?.description) {
         return {
             title: manualPreferences.title ?? 'Portfolio Snapshot',
             description: manualPreferences.description ?? 'Professional portfolio snapshot',
+            source: 'text-input'
+        }
+    }
+
+    // 2. Check for custom title/description in text input (highest priority)
+    if (textAnalysis?.customTitle || textAnalysis?.customDescription) {
+        return {
+            title: textAnalysis.customTitle ?? 'Portfolio Snapshot',
+            description: textAnalysis.customDescription ?? 'Professional portfolio snapshot',
             source: 'text-input'
         }
     }

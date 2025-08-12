@@ -29,6 +29,11 @@ export async function generateAIPortfolioHTML(
         quality?: 'high' | 'medium' | 'low'
         includeMobile?: boolean
         includeTablet?: boolean
+        theme?: string
+        layout?: string
+        typography?: string
+        colorScheme?: string
+        visualElements?: string
     }
 ): Promise<string> {
     let tempImages: Record<string, TempImageInfo> = {}
@@ -274,6 +279,11 @@ async function generateDynamicPrompt(
         quality?: 'high' | 'medium' | 'low'
         includeMobile?: boolean
         includeTablet?: boolean
+        theme?: string
+        layout?: string
+        typography?: string
+        colorScheme?: string
+        visualElements?: string
     }
 ): Promise<string> {
     if (!openai) {
@@ -284,6 +294,11 @@ async function generateDynamicPrompt(
     const quality = options?.quality ?? 'high'
     const includeMobile = options?.includeMobile ?? false
     const includeTablet = options?.includeTablet ?? false
+    const theme = options?.theme
+    const layout = options?.layout
+    const typography = options?.typography
+    const colorScheme = options?.colorScheme
+    const visualElements = options?.visualElements
 
     const promptGeneratorPrompt = `You are an expert prompt engineer. Create a VERY CONCISE prompt for generating a portfolio card HTML.
 
@@ -295,6 +310,11 @@ async function generateDynamicPrompt(
 - Devices: ${includeMobile ? 'Include mobile screenshot' : 'Desktop only'}${includeTablet ? ', Include tablet screenshot' : ''}
 - Output: 1200x675px portfolio card HTML
 - Screenshots available: Desktop${includeMobile ? ', Mobile' : ''}${includeTablet ? ', Tablet' : ''}
+${theme ? `- Theme: ${theme.toUpperCase()}` : ''}
+${layout ? `- Layout: ${layout.toUpperCase()}` : ''}
+${typography ? `- Typography: ${typography.toUpperCase()}` : ''}
+${colorScheme ? `- Color Scheme: ${colorScheme.toUpperCase()}` : ''}
+${visualElements ? `- Visual Elements: ${visualElements.toUpperCase()}` : ''}
 
 **Website Info:**
 - Title: ${websiteData.websiteData.title || 'Portfolio'}
@@ -369,6 +389,11 @@ Return ONLY the complete HTML document with embedded CSS.`
 
 **CRITICAL: Style=${style.toUpperCase()}, Quality=${quality}**
 **Devices: ${includeMobile ? 'mobile' : ''}${includeMobile && includeTablet ? '+' : ''}${includeTablet ? 'tablet' : ''}**
+${theme ? `**Theme: ${theme.toUpperCase()}**` : ''}
+${layout ? `**Layout: ${layout.toUpperCase()}**` : ''}
+${typography ? `**Typography: ${typography.toUpperCase()}**` : ''}
+${colorScheme ? `**Color Scheme: ${colorScheme.toUpperCase()}**` : ''}
+${visualElements ? `**Visual Elements: ${visualElements.toUpperCase()}**` : ''}
 
 **REAL WEBSITE DATA (USE THESE EXACTLY):**
 - Title: "${websiteData.websiteData.title || 'Portfolio'}"
@@ -409,6 +434,11 @@ Return ONLY complete HTML with embedded CSS.`
 
 **CRITICAL: Style=${style.toUpperCase()}, Quality=${quality}**
 **Devices: ${includeMobile ? 'mobile' : ''}${includeMobile && includeTablet ? '+' : ''}${includeTablet ? 'tablet' : ''}**
+${theme ? `**Theme: ${theme.toUpperCase()}**` : ''}
+${layout ? `**Layout: ${layout.toUpperCase()}**` : ''}
+${typography ? `**Typography: ${typography.toUpperCase()}**` : ''}
+${colorScheme ? `**Color Scheme: ${colorScheme.toUpperCase()}**` : ''}
+${visualElements ? `**Visual Elements: ${visualElements.toUpperCase()}**` : ''}
 
 Website: ${websiteData.websiteData.title || 'Portfolio'} (${websiteData.websiteData.url})
 

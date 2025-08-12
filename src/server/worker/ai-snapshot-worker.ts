@@ -5,6 +5,7 @@ import { env } from '@/env';
 import { scrapeWebsiteData, analyzeWebsiteData } from '@/lib/website-analyzer';
 import { generateAIPortfolioHTML } from '@/lib/ai-html-generator';
 import { convertHTMLToPNG } from '@/lib/html-to-png';
+import { analyzeManualPreferences, mergeManualAndStylePreferences } from '@/lib/manual-preferences-analyzer';
 import puppeteer from 'puppeteer';
 import type { Browser } from 'puppeteer';
 import packageJson from '../../../package.json';
@@ -79,7 +80,8 @@ async function processImageSnapshot(
     imageData: string,
     imageName: string,
     imageType: string,
-    stylePreferences?: string
+    stylePreferences?: string,
+    manualPreferences?: { title?: string; description?: string }
 ): Promise<void> {
     try {
         console.log(`🖼️ Worker ${workerId} starting image processing for job ${jobId}...`);
@@ -142,16 +144,33 @@ async function processImageSnapshot(
             }
         };
 
-        // Generate AI HTML using the provided image
+        // Analyze manual preferences if provided
+        const analyzedManualPreferences = await analyzeManualPreferences(manualPreferences);
+
+        // Parse style preferences from job data for dynamic portfolio generation
+        const parsedStylePreferences = {
+            style: stylePreferences?.includes('professional') ? 'professional' :
+                stylePreferences?.includes('creative') ? 'creative' :
+                    stylePreferences?.includes('minimal') ? 'minimal' : 'modern',
+            quality: stylePreferences?.includes('high') ? 'high' :
+                stylePreferences?.includes('medium') ? 'medium' :
+                    stylePreferences?.includes('low') ? 'low' : 'high',
+            includeMobile: stylePreferences?.includes('mobile') ?? stylePreferences?.includes('responsive') ?? false,
+            includeTablet: stylePreferences?.includes('tablet') ?? stylePreferences?.includes('responsive') ?? false
+        };
+
+        console.log('Parsed style preferences from job data:', parsedStylePreferences);
+
+        // Merge manual and style preferences for intelligent portfolio generation
+        const mergedPreferences = mergeManualAndStylePreferences(analyzedManualPreferences, parsedStylePreferences);
+
+        console.log('Merged preferences for image portfolio generation:', mergedPreferences);
+
+        // Generate AI HTML using the provided image with enhanced preferences
         const htmlContent = await generateAIPortfolioHTML(
             mockAnalysis,
             { desktop: imageData },
-            {
-                style: stylePreferences?.includes('professional') ? 'professional' :
-                    stylePreferences?.includes('creative') ? 'creative' :
-                        stylePreferences?.includes('minimal') ? 'minimal' : 'modern',
-                quality: 'high'
-            }
+            mergedPreferences
         );
 
         // Convert HTML to PNG (buffer)
@@ -175,13 +194,17 @@ async function processImageSnapshot(
 const worker = new Worker(
     queueName,
     async (job) => {
-        const { jobId, url, imageData, imageName, imageType, stylePreferences } = job.data as {
+        const { jobId, url, imageData, imageName, imageType, stylePreferences, manualPreferences } = job.data as {
             jobId: string;
             url?: string;
             imageData?: string;
             imageName?: string;
             imageType?: string;
             stylePreferences?: string;
+            manualPreferences?: {
+                title?: string;
+                description?: string;
+            }
         };
 
         console.log(`🔄 Worker ${workerId} processing job ${jobId}...`);
@@ -199,7 +222,7 @@ const worker = new Worker(
         // Route to appropriate processing function based on job type
         if (imageData && imageName && imageType) {
             // Process image-based job
-            await processImageSnapshot(jobId, imageData, imageName, imageType, stylePreferences);
+            await processImageSnapshot(jobId, imageData, imageName, imageType, stylePreferences, manualPreferences);
         } else if (url) {
             // Process URL-based job (existing functionality)
             try {
@@ -218,12 +241,32 @@ const worker = new Worker(
                 // Scrape and analyze
                 const websiteData = await scrapeWebsiteData(url);
                 const analysis = await analyzeWebsiteData(websiteData);
+                const analyzedManualPreferences = await analyzeManualPreferences(manualPreferences);
 
                 // Puppeteer screenshot (base64)
                 const screenshotBase64 = await captureScreenshotBase64(url);
 
-                // Generate AI HTML
-                const htmlContent = await generateAIPortfolioHTML(analysis, { desktop: screenshotBase64 }, { style: 'modern', quality: 'high' });
+                // Parse style preferences from job data for dynamic portfolio generation
+                const parsedStylePreferences = {
+                    style: stylePreferences?.includes('professional') ? 'professional' :
+                        stylePreferences?.includes('creative') ? 'creative' :
+                            stylePreferences?.includes('minimal') ? 'minimal' : 'modern',
+                    quality: stylePreferences?.includes('high') ? 'high' :
+                        stylePreferences?.includes('medium') ? 'medium' :
+                            stylePreferences?.includes('low') ? 'low' : 'high',
+                    includeMobile: stylePreferences?.includes('mobile') ?? stylePreferences?.includes('responsive') ?? false,
+                    includeTablet: stylePreferences?.includes('tablet') ?? stylePreferences?.includes('responsive') ?? false
+                };
+
+                console.log('Parsed style preferences from job data:', parsedStylePreferences);
+
+                // Merge manual and style preferences for intelligent portfolio generation
+                const mergedPreferences = mergeManualAndStylePreferences(analyzedManualPreferences, parsedStylePreferences);
+
+                console.log('Merged preferences for portfolio generation:', mergedPreferences);
+
+                // Generate AI HTML with enhanced preferences
+                const htmlContent = await generateAIPortfolioHTML(analysis, { desktop: screenshotBase64 }, mergedPreferences);
 
                 // Convert HTML to PNG (buffer)
                 const pngBuffer = await convertHTMLToPNG(htmlContent, { deviceScaleFactor: 2, quality: 95 });

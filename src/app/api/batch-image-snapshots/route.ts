@@ -12,7 +12,7 @@ const queue = new Queue('ai-snapshot-queue', { connection });
 
 export async function POST(req: NextRequest) {
     try {
-        const { images, stylePreferences } = await req.json() as BatchImageSnapshotRequest;
+        const { images, stylePreferences, manualPreferences } = await req.json() as BatchImageSnapshotRequest;
 
         if (!Array.isArray(images) || images.length === 0 || images.length > 3) {
             return new Response(
@@ -69,7 +69,8 @@ export async function POST(req: NextRequest) {
                 imageData: image.data,
                 imageName: image.name,
                 imageType: image.type,
-                stylePreferences: stylePreferences ?? null
+                stylePreferences: stylePreferences ?? null,
+                manualPreferences: manualPreferences ?? null
             });
 
             jobIds.push(job.id);
